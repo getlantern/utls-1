@@ -162,6 +162,12 @@ func (uconn *UConn) SetSNI(sni string) {
 	}
 }
 
+// MaxPayloadSize returns the maximum TLS payload size to use for the
+// next application data record.
+func (uconn *UConn) MaxPayloadSize() int {
+	return uconn.maxPayloadSizeForWrite(recordTypeApplicationData)
+}
+
 // Handshake runs the client handshake using given clientHandshakeState
 // Requires hs.hello, and, optionally, hs.session to be set.
 func (c *UConn) Handshake() error {
