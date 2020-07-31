@@ -76,19 +76,19 @@ func compareClientHelloFields(t *testing.T, fieldName string, expected, actual *
 func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID) {
 	uconn := UClient(&net.TCPConn{}, &Config{ServerName: "foobar"}, clientHelloID)
 	if err := uconn.BuildHandshakeState(); err != nil {
-		t.Errorf("Got error: %s; expected to succeed", err)
+		t.Errorf("Got error: %v; expected to succeed", err)
 	}
 
 	generatedUConn := UClient(&net.TCPConn{}, &Config{ServerName: "foobar"}, HelloCustom)
 	generatedSpec, err := FingerprintClientHello(uconn.HandshakeState.Hello.Raw)
 	if err != nil {
-		t.Errorf("Got error: %s; expected to succeed", err)
+		t.Errorf("Got error: %v; expected to succeed", err)
 	}
 	if err := generatedUConn.ApplyPreset(generatedSpec); err != nil {
-		t.Errorf("Got error: %s; expected to succeed", err)
+		t.Errorf("Got error: %v; expected to succeed", err)
 	}
 	if err := generatedUConn.BuildHandshakeState(); err != nil {
-		t.Errorf("Got error: %s; expected to succeed", err)
+		t.Errorf("Got error: %v; expected to succeed", err)
 	}
 
 	if len(uconn.HandshakeState.Hello.Raw) != len(generatedUConn.HandshakeState.Hello.Raw) {
@@ -97,41 +97,25 @@ func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID) 
 
 	// TODO: more explicitly check extensions against eachother?
 
-	compareClientHelloFields(t, "Vers", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "CipherSuites", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "CompressionMethods", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "NextProtoNeg", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "ServerName", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "OcspStapling", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "Scts", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SupportedCurves", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SupportedPoints", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "TicketSupported", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SupportedSignatureAlgorithms", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SecureRenegotiation", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SecureRenegotiationSupported", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "AlpnProtocols", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SupportedSignatureAlgorithmsCert", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "SupportedVersions", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "KeyShares", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "EarlyData", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "PskModes", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "PskIdentities", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
-	compareClientHelloFields(t, "PskBinders", uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
+	fieldsToTest := []string{
+		"Vers", "CipherSuites", "CompressionMethods", "NextProtoNeg", "ServerName", "OcspStapling", "Scts", "SupportedCurves",
+		"SupportedPoints", "TicketSupported", "SupportedSignatureAlgorithms", "SecureRenegotiation", "SecureRenegotiationSupported", "AlpnProtocols",
+		"SupportedSignatureAlgorithmsCert", "SupportedVersions", "KeyShares", "EarlyData", "PskModes", "PskIdentities", "PskBinders",
+	}
 
+	for _, field := range fieldsToTest {
+		compareClientHelloFields(t, field, uconn.HandshakeState.Hello, generatedUConn.HandshakeState.Hello)
+	}
 }
 
 func TestUTLSFingerprintClientHello(t *testing.T) {
-	checkUTLSFingerPrintClientHello(t, HelloChrome_58)
-	checkUTLSFingerPrintClientHello(t, HelloChrome_70)
-	checkUTLSFingerPrintClientHello(t, HelloChrome_83)
-	checkUTLSFingerPrintClientHello(t, HelloFirefox_55)
-	checkUTLSFingerPrintClientHello(t, HelloFirefox_63)
-	checkUTLSFingerPrintClientHello(t, HelloIOS_11_1)
-	checkUTLSFingerPrintClientHello(t, HelloIOS_12_1)
-	checkUTLSFingerPrintClientHello(t, HelloRandomized)
-	checkUTLSFingerPrintClientHello(t, HelloRandomizedALPN)
-	checkUTLSFingerPrintClientHello(t, HelloRandomizedNoALPN)
+	clientHellosToTest := []ClientHelloID{
+	HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63, HelloIOS_11_1, HelloIOS_12_1, HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN}
+
+	for _, clientHello := range clientHellosToTest {
+		t.Logf("Checking fingerprint generated client hello spec against %v", clientHello)
+		checkUTLSFingerPrintClientHello(t, clientHello)
+	}
 }
 
 func TestUTLSIsGrease(t *testing.T) {

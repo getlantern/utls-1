@@ -1234,7 +1234,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 
 				// utls specific
 				// TODO: read this into a generic extension
-				// end utls specifis
+				// end utls specific
 
 			case extensionPSKModes:
 				// RFC 8446, Section 4.2.9
@@ -1286,7 +1286,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 
 				// utls specific
 				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
-				// end utls specifis
+				// end utls specific
 
 				continue
 			}
@@ -1300,7 +1300,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 	}
 
 	if !parse() {
-		return nil, errors.New("Unable to parse client hello")
+		return nil, errors.New("unable to parse client hello")
 	}
 
 	return clientHelloSpec, nil
