@@ -612,7 +612,7 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 	hello.CipherSuites = make([]uint16, len(p.CipherSuites))
 	copy(hello.CipherSuites, p.CipherSuites)
 	for i := range hello.CipherSuites {
-		if hello.CipherSuites[i] == GREASE_PLACEHOLDER {
+		if isGREASEUint16(hello.CipherSuites[i]) {
 			hello.CipherSuites[i] = GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_cipher)
 		}
 	}
