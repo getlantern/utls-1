@@ -1285,7 +1285,11 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 				// Ignore unknown extensions.
 
 				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
+				if isGREASEUint16(extension) {
+					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsGREASEExtension{extension, extData})
+				} else {
+					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
+				}
 				// end utls specific
 
 				continue
