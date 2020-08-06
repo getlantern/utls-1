@@ -167,6 +167,14 @@ func isGREASEUint16(v uint16) bool {
 	return ((v >> 8) == v&0xff) && v&0x0a0a == 0x0a0a
 }
 
+func unGREASEUint16(v uint16) uint16 {
+	if isGREASEUint16(v) {
+		return GREASE_PLACEHOLDER
+	} else {
+		return v
+	}
+}
+
 // utlsMacSHA384 returns a SHA-384 based MAC. These are only supported in TLS 1.2
 // so the given version is ignored.
 func utlsMacSHA384(version uint16, key []byte) macFunction {

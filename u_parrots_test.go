@@ -73,8 +73,8 @@ func compareClientHelloFields(t *testing.T, fieldName string, expected, actual *
 	}
 }
 
-func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID) {
-	uconn := UClient(&net.TCPConn{}, &Config{ServerName: "foobar"}, clientHelloID)
+func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID, serverName string) {
+	uconn := UClient(&net.TCPConn{}, &Config{ServerName: serverName}, clientHelloID)
 	if err := uconn.BuildHandshakeState(); err != nil {
 		t.Errorf("Got error: %v; expected to succeed", err)
 	}
@@ -110,11 +110,15 @@ func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID) 
 
 func TestUTLSFingerprintClientHello(t *testing.T) {
 	clientHellosToTest := []ClientHelloID{
-	HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63, HelloIOS_11_1, HelloIOS_12_1, HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN}
+		HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63, HelloIOS_11_1, HelloIOS_12_1, HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN}
+
+	serverNames := []string{"foobar"}
 
 	for _, clientHello := range clientHellosToTest {
-		t.Logf("Checking fingerprint generated client hello spec against %v", clientHello)
-		checkUTLSFingerPrintClientHello(t, clientHello)
+		for _, serverName := range serverNames {
+			t.Logf("Checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
+			checkUTLSFingerPrintClientHello(t, clientHello, "foobar")
+		}
 	}
 }
 

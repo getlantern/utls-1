@@ -248,7 +248,7 @@ type ALPNExtension struct {
 func (e *ALPNExtension) writeToUConn(uc *UConn) error {
 	uc.config.NextProtos = e.AlpnProtocols
 	uc.HandshakeState.Hello.AlpnProtocols = e.AlpnProtocols
-	uc.HandshakeState.Hello.NextProtoNeg = len(e.AlpnProtocols) > 0
+	uc.HandshakeState.Hello.NextProtoNeg = uc.HandshakeState.Hello.NextProtoNeg || len(e.AlpnProtocols) > 0
 	return nil
 }
 

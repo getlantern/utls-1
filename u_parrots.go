@@ -612,7 +612,7 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 	hello.CipherSuites = make([]uint16, len(p.CipherSuites))
 	copy(hello.CipherSuites, p.CipherSuites)
 	for i := range hello.CipherSuites {
-		if isGREASEUint16(hello.CipherSuites[i]) {
+		if hello.CipherSuites[i] == GREASE_PLACEHOLDER {
 			hello.CipherSuites[i] = GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_cipher)
 		}
 	}
@@ -650,7 +650,7 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 			}
 		case *SupportedCurvesExtension:
 			for i := range ext.Curves {
-				if isGREASEUint16(uint16(ext.Curves[i])) {
+				if ext.Curves[i] == GREASE_PLACEHOLDER {
 					ext.Curves[i] = CurveID(GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_group))
 				}
 			}
@@ -658,7 +658,7 @@ func (uconn *UConn) ApplyPreset(p *ClientHelloSpec) error {
 			preferredCurveIsSet := false
 			for i := range ext.KeyShares {
 				curveID := ext.KeyShares[i].Group
-				if isGREASEUint16(uint16(curveID)) {
+				if curveID == GREASE_PLACEHOLDER {
 					ext.KeyShares[i].Group = CurveID(GetBoringGREASEValue(uconn.greaseSeed, ssl_grease_group))
 					continue
 				}
@@ -942,369 +942,259 @@ func removeRC4Ciphers(s []uint16) []uint16 {
 	return s[:sliceLen]
 }
 
+// FingerprintClientHello returns a ClientHelloSpec which is based on the ClientHello that is passed in as the data argument
 func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
-	m := &clientHelloMsg{raw: data}
-
 	clientHelloSpec := &ClientHelloSpec{}
 
-	parse := func() bool {
-		// Copied directly from tls/handshake_messages.go clientHelloMsg.unmarshal
-		s := cryptobyte.String(data)
-		if !s.Skip(4) || // message type and uint24 length field
-			!s.ReadUint16(&m.vers) || !s.ReadBytes(&m.random, 32) ||
-			!readUint8LengthPrefixed(&s, &m.sessionId) {
-			return false
-		}
+	var vers uint16
 
-		var cipherSuites cryptobyte.String
-		if !s.ReadUint16LengthPrefixed(&cipherSuites) {
-			return false
-		}
-		m.cipherSuites = []uint16{}
-		m.secureRenegotiationSupported = false
-		for !cipherSuites.Empty() {
-			var suite uint16
-			if !cipherSuites.ReadUint16(&suite) {
-				return false
-			}
-			if suite == scsvRenegotiation {
-				m.secureRenegotiationSupported = true
-			}
-			m.cipherSuites = append(m.cipherSuites, suite)
-		}
-
-		if !readUint8LengthPrefixed(&s, &m.compressionMethods) {
-			return false
-		}
-
-		// utls specific
-		clientHelloSpec.CipherSuites = m.cipherSuites
-		clientHelloSpec.CompressionMethods = m.compressionMethods
-		// end utls specific
-
-		if s.Empty() {
-			// ClientHello is optionally followed by extension data
-			return true
-		}
-
-		var extensions cryptobyte.String
-		if !s.ReadUint16LengthPrefixed(&extensions) || !s.Empty() {
-			return false
-		}
-
-		for !extensions.Empty() {
-			var extension uint16
-			var extData cryptobyte.String
-			if !extensions.ReadUint16(&extension) ||
-				!extensions.ReadUint16LengthPrefixed(&extData) {
-				return false
-			}
-
-			switch extension {
-			case extensionServerName:
-				// RFC 6066, Section 3
-				var nameList cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&nameList) || nameList.Empty() {
-					return false
-				}
-				for !nameList.Empty() {
-					var nameType uint8
-					var serverName cryptobyte.String
-					if !nameList.ReadUint8(&nameType) ||
-						!nameList.ReadUint16LengthPrefixed(&serverName) ||
-						serverName.Empty() {
-						return false
-					}
-					if nameType != 0 {
-						continue
-					}
-					if len(m.serverName) != 0 {
-						// Multiple names of the same name_type are prohibited.
-						return false
-					}
-					m.serverName = string(serverName)
-					// An SNI value may not include a trailing dot.
-					if strings.HasSuffix(m.serverName, ".") {
-						return false
-					}
-
-					// utls specific
-					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SNIExtension{m.serverName})
-					// end utls specific
-
-				}
-			case extensionNextProtoNeg:
-				// draft-agl-tls-nextprotoneg-04
-				m.nextProtoNeg = true
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &NPNExtension{})
-				// end utls specific
-
-			case extensionStatusRequest:
-				// RFC 4366, Section 3.6
-				var statusType uint8
-				var ignored cryptobyte.String
-				if !extData.ReadUint8(&statusType) ||
-					!extData.ReadUint16LengthPrefixed(&ignored) ||
-					!extData.ReadUint16LengthPrefixed(&ignored) {
-					return false
-				}
-				m.ocspStapling = statusType == statusTypeOCSP
-
-				// utls specific
-				if m.ocspStapling {
-					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &StatusRequestExtension{})
-				} else {
-					// TODO: what happens if this extension is filled, but
-					// m.ocspStapling == false ???
-				}
-				// end utls specific
-
-			case extensionSupportedCurves:
-				// RFC 4492, sections 5.1.1 and RFC 8446, Section 4.2.7
-				var curves cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&curves) || curves.Empty() {
-					return false
-				}
-				for !curves.Empty() {
-					var curve uint16
-					if !curves.ReadUint16(&curve) {
-						return false
-					}
-					m.supportedCurves = append(m.supportedCurves, CurveID(curve))
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedCurvesExtension{m.supportedCurves})
-				// end utls specific
-
-			case extensionSupportedPoints:
-				// RFC 4492, Section 5.1.2
-				if !readUint8LengthPrefixed(&extData, &m.supportedPoints) ||
-					len(m.supportedPoints) == 0 {
-					return false
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedPointsExtension{m.supportedPoints})
-				// end utls specific
-
-			case extensionSessionTicket:
-				// RFC 5077, Section 3.2
-				m.ticketSupported = true
-				extData.ReadBytes(&m.sessionTicket, len(extData))
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SessionTicketExtension{})
-				// end utls specific
-
-			case extensionSignatureAlgorithms:
-				// RFC 5246, Section 7.4.1.4.1
-				var sigAndAlgs cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&sigAndAlgs) || sigAndAlgs.Empty() {
-					return false
-				}
-				for !sigAndAlgs.Empty() {
-					var sigAndAlg uint16
-					if !sigAndAlgs.ReadUint16(&sigAndAlg) {
-						return false
-					}
-					m.supportedSignatureAlgorithms = append(
-						m.supportedSignatureAlgorithms, SignatureScheme(sigAndAlg))
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SignatureAlgorithmsExtension{m.supportedSignatureAlgorithms})
-				// end utls specific
-
-			case extensionSignatureAlgorithmsCert:
-				// RFC 8446, Section 4.2.3
-				var sigAndAlgs cryptobyte.String
-
-				if !extData.ReadUint16LengthPrefixed(&sigAndAlgs) || sigAndAlgs.Empty() {
-					return false
-				}
-				// utls specific - commented out
-				// for !sigAndAlgs.Empty() {
-				// 	var sigAndAlg uint16
-				// 	if !sigAndAlgs.ReadUint16(&sigAndAlg) {
-				// 		return false
-				// 	}
-				// 	m.supportedSignatureAlgorithmsCert = append(
-				// 		m.supportedSignatureAlgorithmsCert, SignatureScheme(sigAndAlg))
-				// }
-
-				// utls specific
-				// TODO: read this into a generic extension
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, sigAndAlgs})
-				// end utls specifis
-
-			case extensionRenegotiationInfo:
-				// RFC 5746, Section 3.2
-				if !readUint8LengthPrefixed(&extData, &m.secureRenegotiation) {
-					return false
-				}
-				m.secureRenegotiationSupported = true
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &RenegotiationInfoExtension{RenegotiateFreelyAsClient})
-				// end utls specific
-
-			case extensionALPN:
-				// RFC 7301, Section 3.1
-				var protoList cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&protoList) || protoList.Empty() {
-					return false
-				}
-				for !protoList.Empty() {
-					var proto cryptobyte.String
-					if !protoList.ReadUint8LengthPrefixed(&proto) || proto.Empty() {
-						return false
-					}
-					m.alpnProtocols = append(m.alpnProtocols, string(proto))
-
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &ALPNExtension{m.alpnProtocols})
-				// end utls specific
-
-			case extensionSCT:
-				// RFC 6962, Section 3.3.1
-				m.scts = true
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SCTExtension{})
-				// end utls specific
-
-			case extensionSupportedVersions:
-				// RFC 8446, Section 4.2.1
-				var versList cryptobyte.String
-				if !extData.ReadUint8LengthPrefixed(&versList) || versList.Empty() {
-					return false
-				}
-				for !versList.Empty() {
-					var vers uint16
-					if !versList.ReadUint16(&vers) {
-						return false
-					}
-					m.supportedVersions = append(m.supportedVersions, vers)
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedVersionsExtension{m.supportedVersions})
-				// end utls specific
-
-			case extensionCookie:
-				// RFC 8446, Section 4.2.2
-				if !readUint16LengthPrefixed(&extData, &m.cookie) ||
-					len(m.cookie) == 0 {
-					return false
-				}
-
-				// utls specific
-				// TODO: I believe this should never be sent with initial client hello
-				// end utls specific
-
-			case extensionKeyShare:
-				// RFC 8446, Section 4.2.8
-				var clientShares cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&clientShares) {
-					return false
-				}
-				for !clientShares.Empty() {
-					var ks keyShare
-					if !clientShares.ReadUint16((*uint16)(&ks.group)) ||
-						!readUint16LengthPrefixed(&clientShares, &ks.data) ||
-						len(ks.data) == 0 {
-						return false
-					}
-					m.keyShares = append(m.keyShares, ks)
-				}
-
-				// utls specific
-				var ks keyShares = m.keyShares
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &KeyShareExtension{ks.ToPublic()})
-				// end utls specific
-
-			case extensionEarlyData:
-				// RFC 8446, Section 4.2.10
-				m.earlyData = true
-
-				// utls specific
-				// TODO: read this into a generic extension
-				// end utls specific
-
-			case extensionPSKModes:
-				// RFC 8446, Section 4.2.9
-				if !readUint8LengthPrefixed(&extData, &m.pskModes) {
-					return false
-				}
-
-				// utls specific
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &PSKKeyExchangeModesExtension{m.pskModes})
-				// end utls specific
-
-			case extensionPreSharedKey:
-				// RFC 8446, Section 4.2.11
-				if !extensions.Empty() {
-					return false // pre_shared_key must be the last extension
-				}
-				var identities cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&identities) || identities.Empty() {
-					return false
-				}
-				for !identities.Empty() {
-					var psk pskIdentity
-					if !readUint16LengthPrefixed(&identities, &psk.label) ||
-						!identities.ReadUint32(&psk.obfuscatedTicketAge) ||
-						len(psk.label) == 0 {
-						return false
-					}
-					m.pskIdentities = append(m.pskIdentities, psk)
-				}
-				var binders cryptobyte.String
-				if !extData.ReadUint16LengthPrefixed(&binders) || binders.Empty() {
-					return false
-				}
-				for !binders.Empty() {
-					var binder []byte
-					if !readUint8LengthPrefixed(&binders, &binder) ||
-						len(binder) == 0 {
-						return false
-					}
-					m.pskBinders = append(m.pskBinders, binder)
-				}
-
-				// utls specific
-				// TODO: do we want to read this into a generic extension or should we leave it alone
-				// end utls specifis
-
-			default:
-				// Ignore unknown extensions.
-
-				// utls specific
-				if isGREASEUint16(extension) {
-					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsGREASEExtension{extension, extData})
-				} else {
-					clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
-				}
-				// end utls specific
-
-				continue
-			}
-
-			if !extData.Empty() {
-				return false
-			}
-		}
-
-		return true
+	s := cryptobyte.String(data)
+	if !s.Skip(4) || // message type and uint24 length field
+		!s.ReadUint16(&vers) || !s.Skip(32) { // 32 byte random
+		return nil, errors.New("unable to read message type, length, and random")
+	}
+	var ignoredSessionID cryptobyte.String
+	if !s.ReadUint8LengthPrefixed(&ignoredSessionID) {
+		return nil, errors.New("unable to read session id")
 	}
 
-	if !parse() {
-		return nil, errors.New("unable to parse client hello")
+	var cipherSuitesBytes cryptobyte.String
+	if !s.ReadUint16LengthPrefixed(&cipherSuitesBytes) {
+		return nil, errors.New("unable to read ciphersuites")
+	}
+	cipherSuites := []uint16{}
+	for !cipherSuitesBytes.Empty() {
+		var suite uint16
+		if !cipherSuitesBytes.ReadUint16(&suite) {
+			return nil, errors.New("unable to read ciphersuite")
+		}
+		cipherSuites = append(cipherSuites, unGREASEUint16(suite))
+	}
+	clientHelloSpec.CipherSuites = cipherSuites
+
+	if !readUint8LengthPrefixed(&s, &clientHelloSpec.CompressionMethods) {
+		return nil, errors.New("unable to read compression methods")
+	}
+
+	if s.Empty() {
+		// ClientHello is optionally followed by extension data
+		return clientHelloSpec, nil
+	}
+
+	var extensions cryptobyte.String
+	if !s.ReadUint16LengthPrefixed(&extensions) || !s.Empty() {
+		return clientHelloSpec, errors.New("unable to read extensions data")
+	}
+
+	for !extensions.Empty() {
+		var extension uint16
+		var extData cryptobyte.String
+		if !extensions.ReadUint16(&extension) ||
+			!extensions.ReadUint16LengthPrefixed(&extData) {
+			return clientHelloSpec, errors.New("unable to read extension data")
+		}
+
+		switch extension {
+		case extensionServerName:
+			// RFC 6066, Section 3
+			var nameList cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&nameList) || nameList.Empty() {
+				return clientHelloSpec, errors.New("unable to read server name extension data")
+			}
+			var serverName string
+			for !nameList.Empty() {
+				var nameType uint8
+				var serverNameBytes cryptobyte.String
+				if !nameList.ReadUint8(&nameType) ||
+					!nameList.ReadUint16LengthPrefixed(&serverNameBytes) ||
+					serverNameBytes.Empty() {
+					return clientHelloSpec, errors.New("unable to read server name extension data")
+				}
+				if nameType != 0 {
+					continue
+				}
+				if len(serverName) != 0 {
+					return clientHelloSpec, errors.New("multiple names of the same name_type in server name extension are prohibited")
+				}
+				serverName = string(serverNameBytes)
+				if strings.HasSuffix(serverName, ".") {
+					return clientHelloSpec, errors.New("SNI value may not include a trailing dot")
+				}
+
+				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SNIExtension{serverName})
+
+			}
+		case extensionNextProtoNeg:
+			// draft-agl-tls-nextprotoneg-04
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &NPNExtension{})
+
+		case extensionStatusRequest:
+			// RFC 4366, Section 3.6
+			var statusType uint8
+			var ignored cryptobyte.String
+			if !extData.ReadUint8(&statusType) ||
+				!extData.ReadUint16LengthPrefixed(&ignored) ||
+				!extData.ReadUint16LengthPrefixed(&ignored) {
+				return clientHelloSpec, errors.New("unable to read status request extension data")
+			}
+
+			if statusType == statusTypeOCSP {
+				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &StatusRequestExtension{})
+			} else {
+				// TODO: what happens if this extension is filled, but status type is not OCSP
+				// probably return an error
+			}
+
+		case extensionSupportedCurves:
+			// RFC 4492, sections 5.1.1 and RFC 8446, Section 4.2.7
+			var curvesBytes cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&curvesBytes) || curvesBytes.Empty() {
+				return clientHelloSpec, errors.New("unable to read supported curves extension data")
+			}
+			curves := []CurveID{}
+			for !curvesBytes.Empty() {
+				var curve uint16
+				if !curvesBytes.ReadUint16(&curve) {
+					return clientHelloSpec, errors.New("unable to read supported curves extension data")
+				}
+				curves = append(curves, CurveID(unGREASEUint16(curve)))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedCurvesExtension{curves})
+
+		case extensionSupportedPoints:
+			// RFC 4492, Section 5.1.2
+			supportedPoints := []uint8{}
+			if !readUint8LengthPrefixed(&extData, &supportedPoints) ||
+				len(supportedPoints) == 0 {
+				return clientHelloSpec, errors.New("unable to read supported points extension data")
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedPointsExtension{supportedPoints})
+
+		case extensionSessionTicket:
+			// RFC 5077, Section 3.2
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SessionTicketExtension{})
+
+		case extensionSignatureAlgorithms:
+			// RFC 5246, Section 7.4.1.4.1
+			var sigAndAlgs cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&sigAndAlgs) || sigAndAlgs.Empty() {
+				return clientHelloSpec, errors.New("unable to read signature algorithms extension data")
+			}
+			supportedSignatureAlgorithms := []SignatureScheme{}
+			for !sigAndAlgs.Empty() {
+				var sigAndAlg uint16
+				if !sigAndAlgs.ReadUint16(&sigAndAlg) {
+					return clientHelloSpec, errors.New("unable to read signature algorithms extension data")
+				}
+				supportedSignatureAlgorithms = append(
+					supportedSignatureAlgorithms, SignatureScheme(sigAndAlg))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SignatureAlgorithmsExtension{supportedSignatureAlgorithms})
+
+		case extensionSignatureAlgorithmsCert:
+			// RFC 8446, Section 4.2.3
+			return clientHelloSpec, errors.New("unsupported extension SignatureAlgorithmsCert")
+
+		case extensionRenegotiationInfo:
+			// RFC 5746, Section 3.2
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &RenegotiationInfoExtension{RenegotiateOnceAsClient})
+
+		case extensionALPN:
+			// RFC 7301, Section 3.1
+			var protoList cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&protoList) || protoList.Empty() {
+				return clientHelloSpec, errors.New("unable to read ALPN extension data")
+			}
+			alpnProtocols := []string{}
+			for !protoList.Empty() {
+				var proto cryptobyte.String
+				if !protoList.ReadUint8LengthPrefixed(&proto) || proto.Empty() {
+					return clientHelloSpec, errors.New("unable to read ALPN extension data")
+				}
+				alpnProtocols = append(alpnProtocols, string(proto))
+
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &ALPNExtension{alpnProtocols})
+
+		case extensionSCT:
+			// RFC 6962, Section 3.3.1
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SCTExtension{})
+
+		case extensionSupportedVersions:
+			// RFC 8446, Section 4.2.1
+			var versList cryptobyte.String
+			if !extData.ReadUint8LengthPrefixed(&versList) || versList.Empty() {
+				return clientHelloSpec, errors.New("unable to read supported versions extension data")
+			}
+			supportedVersions := []uint16{}
+			for !versList.Empty() {
+				var vers uint16
+				if !versList.ReadUint16(&vers) {
+					return clientHelloSpec, errors.New("unable to read supported versions extension data")
+				}
+				supportedVersions = append(supportedVersions, unGREASEUint16(vers))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedVersionsExtension{supportedVersions})
+
+		case extensionKeyShare:
+			// RFC 8446, Section 4.2.8
+			var clientShares cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&clientShares) {
+				return clientHelloSpec, errors.New("unable to read key share extension data")
+			}
+			keyShares := []KeyShare{}
+			for !clientShares.Empty() {
+				var ks KeyShare
+				var group uint16
+				if !clientShares.ReadUint16(&group) ||
+					!readUint16LengthPrefixed(&clientShares, &ks.Data) ||
+					len(ks.Data) == 0 {
+					return clientHelloSpec, errors.New("unable to read key share extension data")
+				}
+				ks.Group = CurveID(unGREASEUint16(group))
+				keyShares = append(keyShares, ks)
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &KeyShareExtension{keyShares})
+
+		case extensionPSKModes:
+			// RFC 8446, Section 4.2.9
+			pskModes := []uint8{}
+			if !readUint8LengthPrefixed(&extData, &pskModes) {
+				return clientHelloSpec, errors.New("unable to read PSK extension data")
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &PSKKeyExchangeModesExtension{pskModes})
+
+		case utlsExtensionExtendedMasterSecret:
+			// https://tools.ietf.org/html/rfc7627
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsExtendedMasterSecretExtension{})
+
+		case utlsExtensionPadding:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsPaddingExtension{GetPaddingLen: BoringPaddingStyle})
+
+		case fakeExtensionChannelID, fakeCertCompressionAlgs, fakeRecordSizeLimit:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
+
+		case extensionPreSharedKey:
+			// RFC 8446, Section 4.2.11
+			return clientHelloSpec, errors.New("unsupported extension PreSharedKey")
+
+		case extensionCookie:
+			// RFC 8446, Section 4.2.2
+			return clientHelloSpec, errors.New("unsupported extension Cookie")
+
+		case extensionEarlyData:
+			// RFC 8446, Section 4.2.10
+			return clientHelloSpec, errors.New("unsupported extension EarlyData")
+
+		default:
+			if isGREASEUint16(extension) {
+				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsGREASEExtension{unGREASEUint16(extension), extData})
+			} else {
+				return clientHelloSpec, fmt.Errorf("unsupported extension %x", extension)
+			}
+
+			continue
+		}
 	}
 
 	return clientHelloSpec, nil
