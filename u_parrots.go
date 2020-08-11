@@ -943,8 +943,10 @@ func removeRC4Ciphers(s []uint16) []uint16 {
 }
 
 // FingerprintClientHello returns a ClientHelloSpec which is based on the ClientHello that is passed in as the data argument
-// If the ClientHello passed in has extensions that are not recognized or cannot be handled, it will return a non-nil error and a nil `*ClientHelloSpec` value
-// The `data` should be the ClientHello record as produced by `crypto/tls.clientHelloMsg.marshal()`
+//
+// If the ClientHello passed in has extensions that are not recognized or cannot be handled, it will return a non-nil error and a nil *ClientHelloSpec value
+//
+// The data should be the ClientHello record as produced by crypto/tls.clientHelloMsg.marshal()
 // ie. it should not contain the full tls record, just the handshake message as outlined in https://tools.ietf.org/html/rfc5246#section-7.4
 func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 	clientHelloSpec := &ClientHelloSpec{}
