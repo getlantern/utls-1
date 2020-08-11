@@ -943,6 +943,9 @@ func removeRC4Ciphers(s []uint16) []uint16 {
 }
 
 // FingerprintClientHello returns a ClientHelloSpec which is based on the ClientHello that is passed in as the data argument
+// If the ClientHello passed in has extensions that are not recognized or cannot be handled, it will return a non-nil error and a nil `*ClientHelloSpec` value
+// The `data` should be the ClientHello record as produced by `crypto/tls.clientHelloMsg.marshal()`
+// ie. it should not contain the full tls record, just the handshake message as outlined in https://tools.ietf.org/html/rfc5246#section-7.4
 func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 	clientHelloSpec := &ClientHelloSpec{}
 
@@ -983,7 +986,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 
 	var extensions cryptobyte.String
 	if !s.ReadUint16LengthPrefixed(&extensions) || !s.Empty() {
-		return clientHelloSpec, errors.New("unable to read extensions data")
+		return nil, errors.New("unable to read extensions data")
 	}
 
 	for !extensions.Empty() {
@@ -991,7 +994,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 		var extData cryptobyte.String
 		if !extensions.ReadUint16(&extension) ||
 			!extensions.ReadUint16LengthPrefixed(&extData) {
-			return clientHelloSpec, errors.New("unable to read extension data")
+			return nil, errors.New("unable to read extension data")
 		}
 
 		switch extension {
@@ -999,7 +1002,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 6066, Section 3
 			var nameList cryptobyte.String
 			if !extData.ReadUint16LengthPrefixed(&nameList) || nameList.Empty() {
-				return clientHelloSpec, errors.New("unable to read server name extension data")
+				return nil, errors.New("unable to read server name extension data")
 			}
 			var serverName string
 			for !nameList.Empty() {
@@ -1008,17 +1011,17 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 				if !nameList.ReadUint8(&nameType) ||
 					!nameList.ReadUint16LengthPrefixed(&serverNameBytes) ||
 					serverNameBytes.Empty() {
-					return clientHelloSpec, errors.New("unable to read server name extension data")
+					return nil, errors.New("unable to read server name extension data")
 				}
 				if nameType != 0 {
 					continue
 				}
 				if len(serverName) != 0 {
-					return clientHelloSpec, errors.New("multiple names of the same name_type in server name extension are prohibited")
+					return nil, errors.New("multiple names of the same name_type in server name extension are prohibited")
 				}
 				serverName = string(serverNameBytes)
 				if strings.HasSuffix(serverName, ".") {
-					return clientHelloSpec, errors.New("SNI value may not include a trailing dot")
+					return nil, errors.New("SNI value may not include a trailing dot")
 				}
 
 				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SNIExtension{serverName})
@@ -1035,27 +1038,26 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			if !extData.ReadUint8(&statusType) ||
 				!extData.ReadUint16LengthPrefixed(&ignored) ||
 				!extData.ReadUint16LengthPrefixed(&ignored) {
-				return clientHelloSpec, errors.New("unable to read status request extension data")
+				return nil, errors.New("unable to read status request extension data")
 			}
 
 			if statusType == statusTypeOCSP {
 				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &StatusRequestExtension{})
 			} else {
-				// TODO: what happens if this extension is filled, but status type is not OCSP
-				// probably return an error
+				return nil, errors.New("status request extension statusType is not statusTypeOCSP")
 			}
 
 		case extensionSupportedCurves:
 			// RFC 4492, sections 5.1.1 and RFC 8446, Section 4.2.7
 			var curvesBytes cryptobyte.String
 			if !extData.ReadUint16LengthPrefixed(&curvesBytes) || curvesBytes.Empty() {
-				return clientHelloSpec, errors.New("unable to read supported curves extension data")
+				return nil, errors.New("unable to read supported curves extension data")
 			}
 			curves := []CurveID{}
 			for !curvesBytes.Empty() {
 				var curve uint16
 				if !curvesBytes.ReadUint16(&curve) {
-					return clientHelloSpec, errors.New("unable to read supported curves extension data")
+					return nil, errors.New("unable to read supported curves extension data")
 				}
 				curves = append(curves, CurveID(unGREASEUint16(curve)))
 			}
@@ -1066,7 +1068,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			supportedPoints := []uint8{}
 			if !readUint8LengthPrefixed(&extData, &supportedPoints) ||
 				len(supportedPoints) == 0 {
-				return clientHelloSpec, errors.New("unable to read supported points extension data")
+				return nil, errors.New("unable to read supported points extension data")
 			}
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedPointsExtension{supportedPoints})
 
@@ -1078,13 +1080,13 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 5246, Section 7.4.1.4.1
 			var sigAndAlgs cryptobyte.String
 			if !extData.ReadUint16LengthPrefixed(&sigAndAlgs) || sigAndAlgs.Empty() {
-				return clientHelloSpec, errors.New("unable to read signature algorithms extension data")
+				return nil, errors.New("unable to read signature algorithms extension data")
 			}
 			supportedSignatureAlgorithms := []SignatureScheme{}
 			for !sigAndAlgs.Empty() {
 				var sigAndAlg uint16
 				if !sigAndAlgs.ReadUint16(&sigAndAlg) {
-					return clientHelloSpec, errors.New("unable to read signature algorithms extension data")
+					return nil, errors.New("unable to read signature algorithms extension data")
 				}
 				supportedSignatureAlgorithms = append(
 					supportedSignatureAlgorithms, SignatureScheme(sigAndAlg))
@@ -1093,7 +1095,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 
 		case extensionSignatureAlgorithmsCert:
 			// RFC 8446, Section 4.2.3
-			return clientHelloSpec, errors.New("unsupported extension SignatureAlgorithmsCert")
+			return nil, errors.New("unsupported extension SignatureAlgorithmsCert")
 
 		case extensionRenegotiationInfo:
 			// RFC 5746, Section 3.2
@@ -1103,13 +1105,13 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 7301, Section 3.1
 			var protoList cryptobyte.String
 			if !extData.ReadUint16LengthPrefixed(&protoList) || protoList.Empty() {
-				return clientHelloSpec, errors.New("unable to read ALPN extension data")
+				return nil, errors.New("unable to read ALPN extension data")
 			}
 			alpnProtocols := []string{}
 			for !protoList.Empty() {
 				var proto cryptobyte.String
 				if !protoList.ReadUint8LengthPrefixed(&proto) || proto.Empty() {
-					return clientHelloSpec, errors.New("unable to read ALPN extension data")
+					return nil, errors.New("unable to read ALPN extension data")
 				}
 				alpnProtocols = append(alpnProtocols, string(proto))
 
@@ -1124,13 +1126,13 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 8446, Section 4.2.1
 			var versList cryptobyte.String
 			if !extData.ReadUint8LengthPrefixed(&versList) || versList.Empty() {
-				return clientHelloSpec, errors.New("unable to read supported versions extension data")
+				return nil, errors.New("unable to read supported versions extension data")
 			}
 			supportedVersions := []uint16{}
 			for !versList.Empty() {
 				var vers uint16
 				if !versList.ReadUint16(&vers) {
-					return clientHelloSpec, errors.New("unable to read supported versions extension data")
+					return nil, errors.New("unable to read supported versions extension data")
 				}
 				supportedVersions = append(supportedVersions, unGREASEUint16(vers))
 			}
@@ -1140,7 +1142,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 8446, Section 4.2.8
 			var clientShares cryptobyte.String
 			if !extData.ReadUint16LengthPrefixed(&clientShares) {
-				return clientHelloSpec, errors.New("unable to read key share extension data")
+				return nil, errors.New("unable to read key share extension data")
 			}
 			keyShares := []KeyShare{}
 			for !clientShares.Empty() {
@@ -1149,7 +1151,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 				if !clientShares.ReadUint16(&group) ||
 					!readUint16LengthPrefixed(&clientShares, &ks.Data) ||
 					len(ks.Data) == 0 {
-					return clientHelloSpec, errors.New("unable to read key share extension data")
+					return nil, errors.New("unable to read key share extension data")
 				}
 				ks.Group = CurveID(unGREASEUint16(group))
 				keyShares = append(keyShares, ks)
@@ -1160,7 +1162,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			// RFC 8446, Section 4.2.9
 			pskModes := []uint8{}
 			if !readUint8LengthPrefixed(&extData, &pskModes) {
-				return clientHelloSpec, errors.New("unable to read PSK extension data")
+				return nil, errors.New("unable to read PSK extension data")
 			}
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &PSKKeyExchangeModesExtension{pskModes})
 
@@ -1176,21 +1178,21 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 
 		case extensionPreSharedKey:
 			// RFC 8446, Section 4.2.11
-			return clientHelloSpec, errors.New("unsupported extension PreSharedKey")
+			return nil, errors.New("unsupported extension PreSharedKey")
 
 		case extensionCookie:
 			// RFC 8446, Section 4.2.2
-			return clientHelloSpec, errors.New("unsupported extension Cookie")
+			return nil, errors.New("unsupported extension Cookie")
 
 		case extensionEarlyData:
 			// RFC 8446, Section 4.2.10
-			return clientHelloSpec, errors.New("unsupported extension EarlyData")
+			return nil, errors.New("unsupported extension EarlyData")
 
 		default:
 			if isGREASEUint16(extension) {
 				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsGREASEExtension{unGREASEUint16(extension), extData})
 			} else {
-				return clientHelloSpec, fmt.Errorf("unsupported extension %x", extension)
+				return nil, fmt.Errorf("unsupported extension %#x", extension)
 			}
 
 			continue
