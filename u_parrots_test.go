@@ -5,6 +5,8 @@
 package tls
 
 import (
+	"bytes"
+	"io/ioutil"
 	"net"
 	"reflect"
 	"testing"
@@ -73,29 +75,121 @@ func compareClientHelloFields(t *testing.T, fieldName string, expected, actual *
 	}
 }
 
+func checkUTLSExtensionsEquality(t *testing.T, expected, actual TLSExtension) {
+	if _, ok := expected.(*UtlsGREASEExtension); ok {
+		if _, ok := actual.(*UtlsGREASEExtension); ok {
+			// Good enough that they're both GREASE
+			return
+		}
+	}
+
+	if expected.Len() != actual.Len() {
+		t.Errorf("extension types length not equal\nexpected: %#v\ngot: %#v", expected, actual)
+	}
+
+	actualBytes, err := ioutil.ReadAll(actual)
+	if err != nil {
+		t.Errorf("got error: %v; expected to succeed", err)
+	}
+	expectedBytes, err := ioutil.ReadAll(expected)
+	if err != nil {
+		t.Errorf("got error: %v; expected to succeed", err)
+	}
+
+	logInequality := func() {
+		t.Errorf("extensions not equal\nexpected: %#v\nbytes:%#x\ngot: %#v\nbytes: %#x", expected, expectedBytes, actual, actualBytes)
+	}
+
+	if !bytes.Equal(expectedBytes, actualBytes) {
+		// handle all the cases where GREASE or other factors can cause byte unalignment
+
+		// at this point concrete types must match
+		expectedType := reflect.TypeOf(expected)
+		actualType := reflect.TypeOf(actual)
+		if expectedType != actualType {
+			t.Errorf("extensions not equal\nexpected: %#v\nbytes:%#x\ngot: %#v\nbytes: %#x", expected, expectedBytes, actual, actualBytes)
+			return
+		}
+
+		switch expectedExtension := expected.(type) {
+		case *SupportedCurvesExtension:
+			actualExtension := expected.(*SupportedCurvesExtension)
+			for i, expectedCurve := range expectedExtension.Curves {
+				actualCurve := actualExtension.Curves[i]
+				if expectedCurve == actualCurve {
+					continue
+				}
+				if isGREASEUint16(uint16(expectedCurve)) && isGREASEUint16(uint16(actualCurve)) {
+					continue
+				}
+				logInequality()
+				return
+			}
+		case *KeyShareExtension:
+			actualExtension := expected.(*KeyShareExtension)
+			for i, expectedKeyShare := range expectedExtension.KeyShares {
+				actualKeyShare := actualExtension.KeyShares[i]
+				if bytes.Equal(actualKeyShare.Data, expectedKeyShare.Data) {
+					continue
+				}
+				if isGREASEUint16(uint16(expectedKeyShare.Group)) && isGREASEUint16(uint16(actualKeyShare.Group)) {
+					continue
+				}
+				logInequality()
+				return
+			}
+		case *SupportedVersionsExtension:
+			actualExtension := expected.(*SupportedVersionsExtension)
+			for i, expectedVersion := range expectedExtension.Versions {
+				actualVersion := actualExtension.Versions[i]
+				if isGREASEUint16(expectedVersion) && isGREASEUint16(actualVersion) || actualVersion == expectedVersion {
+					continue
+				}
+				logInequality()
+				return
+			}
+		default:
+			logInequality()
+			return
+		}
+	}
+
+}
+
 func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID, serverName string) {
 	uconn := UClient(&net.TCPConn{}, &Config{ServerName: serverName}, clientHelloID)
 	if err := uconn.BuildHandshakeState(); err != nil {
-		t.Errorf("Got error: %v; expected to succeed", err)
+		t.Errorf("got error: %v; expected to succeed", err)
 	}
 
 	generatedUConn := UClient(&net.TCPConn{}, &Config{ServerName: "foobar"}, HelloCustom)
 	generatedSpec, err := FingerprintClientHello(uconn.HandshakeState.Hello.Raw)
 	if err != nil {
-		t.Errorf("Got error: %v; expected to succeed", err)
+		t.Errorf("got error: %v; expected to succeed", err)
 	}
 	if err := generatedUConn.ApplyPreset(generatedSpec); err != nil {
-		t.Errorf("Got error: %v; expected to succeed", err)
+		t.Errorf("got error: %v; expected to succeed", err)
 	}
 	if err := generatedUConn.BuildHandshakeState(); err != nil {
-		t.Errorf("Got error: %v; expected to succeed", err)
+		t.Errorf("got error: %v; expected to succeed", err)
 	}
 
 	if len(uconn.HandshakeState.Hello.Raw) != len(generatedUConn.HandshakeState.Hello.Raw) {
 		t.Errorf("UConn from fingerprint has %d length, should have %d", len(generatedUConn.HandshakeState.Hello.Raw), len(uconn.HandshakeState.Hello.Raw))
 	}
 
-	// TODO: more explicitly check extensions against eachother?
+	// We can't effectively check the extensions on randomized client hello ids
+	if !(clientHelloID == HelloRandomized || clientHelloID == HelloRandomizedALPN || clientHelloID == HelloRandomizedNoALPN) {
+		for i, originalExtension := range uconn.Extensions {
+			if _, ok := originalExtension.(*UtlsPaddingExtension); ok {
+				// We can't really compare padding extensions in this way
+				continue
+			}
+
+			generatedExtension := generatedUConn.Extensions[i]
+			checkUTLSExtensionsEquality(t, originalExtension, generatedExtension)
+		}
+	}
 
 	fieldsToTest := []string{
 		"Vers", "CipherSuites", "CompressionMethods", "NextProtoNeg", "ServerName", "OcspStapling", "Scts", "SupportedCurves",
@@ -116,7 +210,7 @@ func TestUTLSFingerprintClientHello(t *testing.T) {
 
 	for _, clientHello := range clientHellosToTest {
 		for _, serverName := range serverNames {
-			t.Logf("Checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
+			t.Logf("checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
 			checkUTLSFingerPrintClientHello(t, clientHello, "foobar")
 		}
 	}
@@ -139,7 +233,7 @@ func TestUTLSIsGrease(t *testing.T) {
 
 	for _, testCase := range testMap {
 		if isGREASEUint16(testCase.version) != testCase.isGREASE {
-			t.Errorf("Misidentified GREASE: testing %x, isGREASE: %v", testCase.version, isGREASEUint16(testCase.version))
+			t.Errorf("misidentified GREASE: testing %x, isGREASE: %v", testCase.version, isGREASEUint16(testCase.version))
 		}
 	}
 }
