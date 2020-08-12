@@ -1026,7 +1026,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 					return nil, errors.New("SNI value may not include a trailing dot")
 				}
 
-				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SNIExtension{serverName})
+				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SNIExtension{})
 
 			}
 		case extensionNextProtoNeg:
