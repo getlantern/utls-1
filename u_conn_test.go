@@ -329,14 +329,14 @@ func TestUTLSHandshakeClientFingerprintedSpecFromRaw(t *testing.T) {
 
 	config := getUTLSTestConfig()
 
-	opensslCipherName := "ECDHE-RSA-AES128-GCM-SHA256"
+	opensslCipherName := "TLS_AES_128_GCM_SHA256"
 	test := &clientTest{
 		name:   "UTLS-" + opensslCipherName + "-" + hello.helloName(),
-		args:   []string{"-cipher", opensslCipherName},
+		args:   []string{"-ciphersuites", opensslCipherName},
 		config: config,
 	}
 
-	runUTLSClientTestTLS12(t, test, hello)
+	runUTLSClientTestTLS13(t, test, hello)
 }
 
 // tests consistency of fingerprint after HelloRetryRequest
