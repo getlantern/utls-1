@@ -1147,12 +1147,14 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 				return nil, errors.New("unable to read key share extension data")
 			}
 			keyShares := []KeyShare{}
+			// Key share data will be discarded as it should depend on per-connection parameters.
+			var keyShareData []byte
 			for !clientShares.Empty() {
 				var ks KeyShare
 				var group uint16
 				if !clientShares.ReadUint16(&group) ||
-					!readUint16LengthPrefixed(&clientShares, &ks.Data) ||
-					len(ks.Data) == 0 {
+					!readUint16LengthPrefixed(&clientShares, &keyShareData) ||
+					len(keyShareData) == 0 {
 					return nil, errors.New("unable to read key share extension data")
 				}
 				ks.Group = CurveID(unGREASEUint16(group))
