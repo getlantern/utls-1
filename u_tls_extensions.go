@@ -782,5 +782,5 @@ func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
 	}
 	b[0] = e.major
 	b[1] = e.minor
-	return 0, nil
+	return 0, io.EOF
 }
