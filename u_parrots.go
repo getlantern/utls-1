@@ -910,6 +910,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				&RenegotiationInfoExtension{
 					Renegotiation: RenegotiateOnceAsClient,
 				},
+				&SNIExtension{},
 				&UtlsExtendedMasterSecretExtension{},
 				&SessionTicketExtension{},
 				&SignatureAlgorithmsExtension{
