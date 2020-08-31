@@ -527,6 +527,441 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				}},
 			},
 		}, nil
+	case HelloEdge_85:
+		return ClientHelloSpec{
+			CipherSuites: []uint16{
+				GREASE_PLACEHOLDER,
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+			CompressionMethods: []uint8{
+				0x0, // no compression
+			},
+			Extensions: []TLSExtension{
+				&UtlsGREASEExtension{},
+				&SNIExtension{},
+				&UtlsExtendedMasterSecretExtension{},
+				&RenegotiationInfoExtension{
+					Renegotiation: RenegotiateOnceAsClient,
+				},
+				&SupportedCurvesExtension{
+					Curves: []CurveID{
+						GREASE_PLACEHOLDER,
+						X25519,
+						CurveP256,
+						CurveP384,
+					},
+				},
+				&SupportedPointsExtension{
+					SupportedPoints: []uint8{
+						0x0, // pointFormatUncompressed
+					},
+				},
+				&SessionTicketExtension{},
+				&ALPNExtension{
+					AlpnProtocols: []string{
+						"h2",
+						"http/1.1",
+					},
+				},
+				&StatusRequestExtension{},
+				&SignatureAlgorithmsExtension{
+					SupportedSignatureAlgorithms: []SignatureScheme{
+						ECDSAWithP256AndSHA256,
+						PSSWithSHA256,
+						PKCS1WithSHA256,
+						ECDSAWithP384AndSHA384,
+						PSSWithSHA384,
+						PKCS1WithSHA384,
+						PSSWithSHA512,
+						PKCS1WithSHA512,
+					},
+				},
+				&SCTExtension{},
+				&KeyShareExtension{
+					KeyShares: []KeyShare{
+						{
+							Group: GREASE_PLACEHOLDER,
+							Data: []byte{
+								0,
+							},
+						},
+						{
+							Group: X25519,
+						},
+					},
+				},
+				&PSKKeyExchangeModesExtension{
+					Modes: []uint8{
+						PskModeDHE,
+					},
+				},
+				&SupportedVersionsExtension{
+					Versions: []uint16{
+						GREASE_PLACEHOLDER,
+						VersionTLS13,
+						VersionTLS12,
+						VersionTLS11,
+						VersionTLS10,
+					},
+				},
+				&GenericExtension{
+					// Certificate Compression:
+					// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10
+					Id: 27,
+					Data: []byte{
+						2, 0, 2,
+					},
+				},
+				&UtlsGREASEExtension{},
+				&UtlsPaddingExtension{
+					GetPaddingLen: BoringPaddingStyle,
+				},
+			},
+		}, nil
+	case HelloSafari_13_1:
+		return ClientHelloSpec{
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				DISABLED_TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				DISABLED_TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				DISABLED_TLS_RSA_WITH_AES_256_CBC_SHA256,
+				TLS_RSA_WITH_AES_128_CBC_SHA256,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				0xc008, // unrecognized cipher suite
+				TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
+				TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+			},
+			CompressionMethods: []uint8{
+				0x0, // no compression
+			},
+			Extensions: []TLSExtension{
+				&RenegotiationInfoExtension{
+					Renegotiation: RenegotiateOnceAsClient,
+				},
+				&SNIExtension{},
+				&UtlsExtendedMasterSecretExtension{},
+				&SignatureAlgorithmsExtension{
+					SupportedSignatureAlgorithms: []SignatureScheme{
+						ECDSAWithP256AndSHA256,
+						PSSWithSHA256,
+						PKCS1WithSHA256,
+						ECDSAWithP384AndSHA384,
+						ECDSAWithSHA1,
+						PSSWithSHA384,
+						PSSWithSHA384,
+						PKCS1WithSHA384,
+						PSSWithSHA512,
+						PKCS1WithSHA512,
+						PKCS1WithSHA1,
+					},
+				},
+				&StatusRequestExtension{},
+				&SCTExtension{},
+				&ALPNExtension{
+					AlpnProtocols: []string{
+						"h2",
+						"http/1.1",
+					},
+				},
+				&SupportedPointsExtension{
+					SupportedPoints: []uint8{
+						0x0, // pointFormatUncompressed
+					},
+				},
+				&KeyShareExtension{
+					KeyShares: []KeyShare{
+						{
+							Group: X25519,
+						},
+					},
+				},
+				&PSKKeyExchangeModesExtension{
+					Modes: []uint8{
+						PskModeDHE,
+					},
+				},
+				&SupportedVersionsExtension{
+					Versions: []uint16{
+						VersionTLS13,
+						VersionTLS12,
+						VersionTLS11,
+						VersionTLS10,
+					},
+				},
+				&SupportedCurvesExtension{
+					Curves: []CurveID{
+						X25519,
+						CurveP256,
+						CurveP384,
+						CurveP521,
+					},
+				},
+				&UtlsPaddingExtension{
+					GetPaddingLen: BoringPaddingStyle,
+				},
+			},
+		}, nil
+	case HelloExplorer_11:
+		return ClientHelloSpec{
+			CipherSuites: []uint16{
+				TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				0x9f, // unrecognized cipher suite
+				FAKE_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
+				DISABLED_TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+				DISABLED_TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				DISABLED_TLS_RSA_WITH_AES_256_CBC_SHA256,
+				TLS_RSA_WITH_AES_128_CBC_SHA256,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+			},
+			CompressionMethods: []uint8{
+				0x0, // no compression
+			},
+			Extensions: []TLSExtension{
+				&SNIExtension{},
+				&StatusRequestExtension{},
+				&SupportedCurvesExtension{
+					Curves: []CurveID{
+						X25519,
+						CurveP256,
+						CurveP384,
+					},
+				},
+				&SupportedPointsExtension{
+					SupportedPoints: []uint8{
+						0x0, // pointFormatUncompressed
+					},
+				},
+				&SignatureAlgorithmsExtension{
+					SupportedSignatureAlgorithms: []SignatureScheme{
+						PKCS1WithSHA512,
+						ECDSAWithP521AndSHA512,
+						PKCS1WithSHA256,
+						PKCS1WithSHA384,
+						PKCS1WithSHA1,
+						ECDSAWithP256AndSHA256,
+						ECDSAWithP384AndSHA384,
+						ECDSAWithSHA1,
+						0x202, // unrecognized signature scheme
+					},
+				},
+				&SessionTicketExtension{},
+				&ALPNExtension{
+					AlpnProtocols: []string{
+						"h2",
+						"http/1.1",
+					},
+				},
+				&UtlsExtendedMasterSecretExtension{},
+				&GenericExtension{
+					// Token Binding:
+					// https://tools.ietf.org/html/rfc8472
+					Id: 24,
+					Data: []byte{
+						0, 16, 3, 2, 1, 0,
+					},
+				},
+				&RenegotiationInfoExtension{
+					Renegotiation: RenegotiateOnceAsClient,
+				},
+			},
+		}, nil
+	case Hello360_7_5:
+		return ClientHelloSpec{
+			CipherSuites: []uint16{
+				TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
+				0x6b, // unrecognized cipher suite
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				DISABLED_TLS_RSA_WITH_AES_256_CBC_SHA256,
+				TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
+				TLS_ECDHE_RSA_WITH_RC4_128_SHA,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
+				FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
+				0x67, // unrecognized cipher suite
+				0x32, // unrecognized cipher suite
+				TLS_RSA_WITH_RC4_128_SHA,
+				FAKE_TLS_RSA_WITH_RC4_128_MD5,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_128_CBC_SHA256,
+				TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+			},
+			CompressionMethods: []uint8{
+				0x0, // no compression
+			},
+			Extensions: []TLSExtension{
+				&SNIExtension{},
+				&RenegotiationInfoExtension{
+					Renegotiation: RenegotiateOnceAsClient,
+				},
+				&SupportedCurvesExtension{
+					Curves: []CurveID{
+						CurveP256,
+						CurveP384,
+						CurveP521,
+					},
+				},
+				&SupportedPointsExtension{
+					SupportedPoints: []uint8{
+						0x0, // pointFormatUncompressed
+					},
+				},
+				&SessionTicketExtension{},
+				&NPNExtension{},
+				&ALPNExtension{
+					AlpnProtocols: []string{
+						"spdy/2",
+						"spdy/3",
+						"spdy/3.1",
+						"http/1.1",
+					},
+				},
+				&GenericExtension{
+					// Channel ID (old extension ID):
+					// https://tools.ietf.org/id/draft-balfanz-tls-channelid-01.html
+					Id:   30031,
+					Data: []byte{},
+				},
+				&StatusRequestExtension{},
+				&SignatureAlgorithmsExtension{
+					SupportedSignatureAlgorithms: []SignatureScheme{
+						PKCS1WithSHA256,
+						PKCS1WithSHA384,
+						PKCS1WithSHA1,
+						ECDSAWithP256AndSHA256,
+						ECDSAWithP384AndSHA384,
+						ECDSAWithSHA1,
+						0x402, // unrecognized signature scheme
+						0x202, // unrecognized signature scheme
+					},
+				},
+			},
+		}, nil
+	case HelloQQ_10_6:
+		return ClientHelloSpec{
+			CipherSuites: []uint16{
+				GREASE_PLACEHOLDER,
+				TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+				TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_3DES_EDE_CBC_SHA,
+			},
+			CompressionMethods: []uint8{
+				0x0, // no compression
+			},
+			Extensions: []TLSExtension{
+				&UtlsGREASEExtension{},
+				&RenegotiationInfoExtension{
+					Renegotiation: RenegotiateOnceAsClient,
+				},
+				&UtlsExtendedMasterSecretExtension{},
+				&SessionTicketExtension{},
+				&SignatureAlgorithmsExtension{
+					SupportedSignatureAlgorithms: []SignatureScheme{
+						ECDSAWithP256AndSHA256,
+						PSSWithSHA256,
+						PKCS1WithSHA256,
+						ECDSAWithP384AndSHA384,
+						PSSWithSHA384,
+						PKCS1WithSHA384,
+						PSSWithSHA512,
+						PKCS1WithSHA512,
+						PKCS1WithSHA1,
+					},
+				},
+				&StatusRequestExtension{},
+				&SCTExtension{},
+				&ALPNExtension{
+					AlpnProtocols: []string{
+						"h2",
+						"http/1.1",
+					},
+				},
+				&GenericExtension{
+					// XXX: unknown extension
+					Id:   30032,
+					Data: []byte{},
+				},
+				&SupportedPointsExtension{
+					SupportedPoints: []uint8{
+						0x0, // pointFormatUncompressed
+					},
+				},
+				&SupportedCurvesExtension{
+					Curves: []CurveID{
+						GREASE_PLACEHOLDER,
+						X25519,
+						CurveP256,
+						CurveP384,
+					},
+				},
+				&GenericExtension{
+					// Certificate Compression:
+					// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10
+					Id: 27,
+					Data: []byte{
+						2, 0, 2,
+					},
+				},
+				&UtlsGREASEExtension{},
+			},
+		}, nil
 	default:
 		return ClientHelloSpec{}, errors.New("ClientHello ID " + id.Str() + " is unknown")
 	}

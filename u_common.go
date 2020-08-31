@@ -100,8 +100,13 @@ const (
 	helloCustom           = "Custom"
 	helloFirefox          = "Firefox"
 	helloChrome           = "Chrome"
+	helloEdge             = "Edge"
+	helloExplorer         = "InternetExplorer"
+	helloSafari           = "Safari"
 	helloIOS              = "iOS"
 	helloAndroid          = "Android"
+	hello360              = "360Browser"
+	helloQQ               = "QQBrowser"
 
 	// versions
 	helloAutoVers = "0"
@@ -155,6 +160,20 @@ var (
 	HelloIOS_Auto = HelloIOS_12_1
 	HelloIOS_11_1 = ClientHelloID{helloIOS, "111", nil} // legacy "111" means 11.1
 	HelloIOS_12_1 = ClientHelloID{helloIOS, "12.1", nil}
+
+	HelloEdge_Auto = HelloEdge_85
+	HelloEdge_85   = ClientHelloID{helloEdge, "85", nil}
+
+	HelloExplorer_11 = ClientHelloID{helloExplorer, "11", nil}
+
+	HelloSafari_Auto = HelloSafari_13_1
+	HelloSafari_13_1 = ClientHelloID{helloSafari, "13.1", nil}
+
+	Hello360_Auto = Hello360_7_5
+	Hello360_7_5  = ClientHelloID{hello360, "7.5", nil}
+
+	HelloQQ_Auto = HelloQQ_10_6
+	HelloQQ_10_6 = ClientHelloID{helloQQ, "10.6", nil}
 )
 
 // based on spec's GreaseStyle, GREASE_PLACEHOLDER may be replaced by another GREASE value
