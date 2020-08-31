@@ -761,3 +761,26 @@ func (e *FakeRecordSizeLimitExtension) Read(b []byte) (int, error) {
 	b[5] = byte(e.Limit & 0xff)
 	return e.Len(), io.EOF
 }
+
+// https://tools.ietf.org/html/rfc8472#section-2
+
+type FakeTokenBindingExtension struct {
+	major, minor uint8
+}
+
+func (e *FakeTokenBindingExtension) writeToUConn(uc *UConn) error {
+	return nil
+}
+
+func (e *FakeTokenBindingExtension) Len() int {
+	return 2
+}
+
+func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
+	if len(b) < e.Len() {
+		return 0, io.ErrShortBuffer
+	}
+	b[0] = e.major
+	b[1] = e.minor
+	return 0, io.EOF
+}
