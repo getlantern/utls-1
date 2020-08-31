@@ -20,10 +20,10 @@ const (
 	utlsExtensionExtendedMasterSecret uint16 = 23 // https://tools.ietf.org/html/rfc7627
 
 	// extensions with 'fake' prefix break connection, if server echoes them back
-	fakeExtensionChannelID uint16 = 30031 // not IANA assigned
-
-	fakeCertCompressionAlgs uint16 = 0x001b
-	fakeRecordSizeLimit     uint16 = 0x001c
+	fakeExtensionTokenBinding uint16 = 24
+	fakeExtensionChannelID    uint16 = 30031 // not IANA assigned
+	fakeCertCompressionAlgs   uint16 = 0x001b
+	fakeRecordSizeLimit       uint16 = 0x001c
 )
 
 const (
