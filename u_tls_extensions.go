@@ -675,6 +675,8 @@ FAKE EXTENSIONS
 */
 
 type FakeChannelIDExtension struct {
+	// The extension ID changed from 30031 to 30032. Set to true to use the old extension ID.
+	oldExtensionID bool
 }
 
 func (e *FakeChannelIDExtension) writeToUConn(uc *UConn) error {
@@ -689,9 +691,13 @@ func (e *FakeChannelIDExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
+	extensionID := fakeExtensionChannelID
+	if e.oldExtensionID {
+		extensionID = fakeExtensionChannelIDOld
+	}
 	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
-	b[0] = byte(fakeExtensionChannelID >> 8)
-	b[1] = byte(fakeExtensionChannelID & 0xff)
+	b[0] = byte(extensionID >> 8)
+	b[1] = byte(extensionID & 0xff)
 	// The length is 0
 	return e.Len(), io.EOF
 }
