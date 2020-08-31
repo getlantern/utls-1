@@ -209,9 +209,10 @@ func TestUTLSFingerprintClientHello(t *testing.T) {
 		HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN,
 	}
 
+	serverName := "foobar"
 	for _, clientHello := range clientHellosToTest {
-		t.Logf("checking fingerprint generated client hello spec against %v", clientHello)
-		checkUTLSFingerPrintClientHello(t, clientHello, "foobar")
+		t.Logf("checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
+		checkUTLSFingerPrintClientHello(t, clientHello, serverName)
 	}
 }
 
