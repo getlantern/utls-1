@@ -780,17 +780,24 @@ func (e *FakeTokenBindingExtension) writeToUConn(uc *UConn) error {
 }
 
 func (e *FakeTokenBindingExtension) Len() int {
-	return 2 + len(e.KeyParameters)
+	// extension ID + data length + versions + key parameters length + key parameters
+	return 2 + 2 + 2 + 1 + len(e.KeyParameters)
 }
 
 func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
-	b[0] = e.MajorVersion
-	b[1] = e.MinorVersion
+	dataLen := e.Len() - 4
+	b[0] = byte(fakeExtensionTokenBinding >> 8)
+	b[1] = byte(fakeExtensionTokenBinding & 0xff)
+	b[2] = byte(dataLen >> 8)
+	b[3] = byte(dataLen & 0xff)
+	b[4] = e.MajorVersion
+	b[5] = e.MinorVersion
+	b[6] = byte(len(e.KeyParameters))
 	if len(e.KeyParameters) > 0 {
-		copy(b[2:], e.KeyParameters)
+		copy(b[7:], e.KeyParameters)
 	}
-	return 0, io.EOF
+	return e.Len(), io.EOF
 }
