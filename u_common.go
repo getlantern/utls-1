@@ -37,16 +37,26 @@ const (
 	FAKE_OLD_TLS_DHE_RSA_WITH_CHACHA20_POLY1305_SHA256 = uint16(0xcc15) // we can try to craft these ciphersuites
 	FAKE_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256           = uint16(0x009e) // from existing pieces, if needed
 
-	FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA  = uint16(0x0033)
-	FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA  = uint16(0x0039)
-	FAKE_TLS_RSA_WITH_RC4_128_MD5          = uint16(0x0004)
-	FAKE_TLS_EMPTY_RENEGOTIATION_INFO_SCSV = uint16(0x00ff)
+	FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA    = uint16(0x0033)
+	FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA    = uint16(0x0039)
+	FAKE_TLS_RSA_WITH_RC4_128_MD5            = uint16(0x0004)
+	FAKE_TLS_DHE_RSA_WITH_AES_256_GCM_SHA384 = uint16(0x009f)
+	FAKE_TLS_DHE_DSS_WITH_AES_128_CBC_SHA    = uint16(0x0032)
+	FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA256 = uint16(0x006b)
+	FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 = uint16(0x0067)
+	FAKE_TLS_EMPTY_RENEGOTIATION_INFO_SCSV   = uint16(0x00ff)
+
+	// https://docs.microsoft.com/en-us/dotnet/api/system.net.security.tlsciphersuite?view=netcore-3.1
+	FAKE_TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA = uint16(0xc008)
 )
 
 // newest signatures
 var (
 	FakePKCS1WithSHA224 SignatureScheme = 0x0301
 	FakeECDSAWithSHA224 SignatureScheme = 0x0303
+
+	FakeSHA1WithDSA   SignatureScheme = 0x0202
+	FakeSHA256WithDSA SignatureScheme = 0x0402
 
 	// fakeEd25519 = SignatureAndHash{0x08, 0x07}
 	// fakeEd448 = SignatureAndHash{0x08, 0x08}

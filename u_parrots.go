@@ -658,7 +658,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				TLS_RSA_WITH_AES_128_CBC_SHA256,
 				TLS_RSA_WITH_AES_256_CBC_SHA,
 				TLS_RSA_WITH_AES_128_CBC_SHA,
-				0xc008, // unrecognized cipher suite
+				FAKE_TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA,
 				TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA,
 				TLS_RSA_WITH_3DES_EDE_CBC_SHA,
 			},
@@ -739,7 +739,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-				0x9f, // unrecognized cipher suite
+				FAKE_TLS_DHE_RSA_WITH_AES_256_GCM_SHA384,
 				FAKE_TLS_DHE_RSA_WITH_AES_128_GCM_SHA256,
 				DISABLED_TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384,
 				TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,
@@ -785,7 +785,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						ECDSAWithP256AndSHA256,
 						ECDSAWithP384AndSHA384,
 						ECDSAWithSHA1,
-						0x202, // unrecognized signature scheme
+						FakeSHA1WithDSA,
 					},
 				},
 				&SessionTicketExtension{},
@@ -815,7 +815,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA,
 				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 				FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA,
-				0x6b, // unrecognized cipher suite
+				FAKE_TLS_DHE_RSA_WITH_AES_256_CBC_SHA256,
 				TLS_RSA_WITH_AES_256_CBC_SHA,
 				DISABLED_TLS_RSA_WITH_AES_256_CBC_SHA256,
 				TLS_ECDHE_ECDSA_WITH_RC4_128_SHA,
@@ -825,8 +825,8 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
 				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256,
 				FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA,
-				0x67, // unrecognized cipher suite
-				0x32, // unrecognized cipher suite
+				FAKE_TLS_DHE_RSA_WITH_AES_128_CBC_SHA256,
+				FAKE_TLS_DHE_DSS_WITH_AES_128_CBC_SHA,
 				TLS_RSA_WITH_RC4_128_SHA,
 				FAKE_TLS_RSA_WITH_RC4_128_MD5,
 				TLS_RSA_WITH_AES_128_CBC_SHA,
@@ -878,8 +878,8 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						ECDSAWithP256AndSHA256,
 						ECDSAWithP384AndSHA384,
 						ECDSAWithSHA1,
-						0x402, // unrecognized signature scheme
-						0x202, // unrecognized signature scheme
+						FakeSHA256WithDSA,
+						FakeSHA1WithDSA,
 					},
 				},
 			},
