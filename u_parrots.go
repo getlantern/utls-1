@@ -1180,7 +1180,24 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 		case utlsExtensionPadding:
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsPaddingExtension{GetPaddingLen: BoringPaddingStyle})
 
-		case fakeExtensionChannelID, fakeCertCompressionAlgs, fakeRecordSizeLimit:
+		case fakeExtensionChannelID:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeChannelIDExtension{})
+
+		case fakeExtensionChannelIDOld:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeChannelIDExtension{true})
+
+		case fakeExtensionTokenBinding:
+			var tokenBindingExt FakeTokenBindingExtension
+			var keyParameters cryptobyte.String
+			if !extData.ReadUint8(&tokenBindingExt.MajorVersion) ||
+				!extData.ReadUint8(&tokenBindingExt.MinorVersion) ||
+				!extData.ReadUint8LengthPrefixed(&keyParameters) {
+				return nil, errors.New("unable to read token binding extension data")
+			}
+			tokenBindingExt.KeyParameters = keyParameters
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &tokenBindingExt)
+
+		case fakeCertCompressionAlgs, fakeRecordSizeLimit:
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
 
 		case extensionPreSharedKey:
