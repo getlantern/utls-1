@@ -718,7 +718,7 @@ func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
-	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
+	// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10#section-3
 	b[0] = byte(fakeCertCompressionAlgs >> 8)
 	b[1] = byte(fakeCertCompressionAlgs & 0xff)
 
@@ -727,8 +727,11 @@ func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
 		return 0, errors.New("too many certificate compression methods")
 	}
 
+	// Extension data length.
 	b[2] = byte((extLen + 1) >> 8)
 	b[3] = byte((extLen + 1) & 0xff)
+
+	// Methods length.
 	b[4] = byte(extLen)
 
 	i := 5
