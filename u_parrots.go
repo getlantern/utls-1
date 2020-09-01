@@ -1197,7 +1197,14 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			tokenBindingExt.KeyParameters = keyParameters
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &tokenBindingExt)
 
-		case fakeCertCompressionAlgs, fakeRecordSizeLimit:
+		case fakeRecordSizeLimit:
+			recordSizeExt := new(FakeRecordSizeLimitExtension)
+			if !extData.ReadUint16(&recordSizeExt.Limit) {
+				return nil, errors.New("unable to read record size limit extension data")
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, recordSizeExt)
+
+		case fakeCertCompressionAlgs:
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
 
 		case extensionPreSharedKey:
