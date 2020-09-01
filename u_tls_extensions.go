@@ -771,7 +771,8 @@ func (e *FakeRecordSizeLimitExtension) Read(b []byte) (int, error) {
 // https://tools.ietf.org/html/rfc8472#section-2
 
 type FakeTokenBindingExtension struct {
-	Major, Minor uint8
+	MajorVersion, MinorVersion uint8
+	KeyParameters              []uint8
 }
 
 func (e *FakeTokenBindingExtension) writeToUConn(uc *UConn) error {
@@ -779,14 +780,17 @@ func (e *FakeTokenBindingExtension) writeToUConn(uc *UConn) error {
 }
 
 func (e *FakeTokenBindingExtension) Len() int {
-	return 2
+	return 2 + len(e.KeyParameters)
 }
 
 func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
-	b[0] = e.Major
-	b[1] = e.Minor
+	b[0] = e.MajorVersion
+	b[1] = e.MinorVersion
+	if len(e.KeyParameters) > 0 {
+		copy(b[2:], e.KeyParameters)
+	}
 	return 0, io.EOF
 }
