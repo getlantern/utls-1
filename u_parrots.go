@@ -935,7 +935,8 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					},
 				},
 				&GenericExtension{
-					// XXX: unknown extension
+					// Channel ID:
+					// https://tools.ietf.org/id/draft-balfanz-tls-channelid-01.html
 					Id:   30032,
 					Data: []byte{},
 				},
