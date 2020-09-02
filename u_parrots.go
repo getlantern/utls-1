@@ -799,7 +799,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 				&FakeTokenBindingExtension{
 					MajorVersion: 0,
 					MinorVersion: 16,
-					[]uint8{
+					KeyParameters: []uint8{
 						2, 1, 0,
 					},
 				},
