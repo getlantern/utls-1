@@ -675,6 +675,8 @@ FAKE EXTENSIONS
 */
 
 type FakeChannelIDExtension struct {
+	// The extension ID changed from 30031 to 30032. Set to true to use the old extension ID.
+	OldExtensionID bool
 }
 
 func (e *FakeChannelIDExtension) writeToUConn(uc *UConn) error {
@@ -689,9 +691,13 @@ func (e *FakeChannelIDExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
+	extensionID := fakeExtensionChannelID
+	if e.OldExtensionID {
+		extensionID = fakeExtensionChannelIDOld
+	}
 	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
-	b[0] = byte(fakeExtensionChannelID >> 8)
-	b[1] = byte(fakeExtensionChannelID & 0xff)
+	b[0] = byte(extensionID >> 8)
+	b[1] = byte(extensionID & 0xff)
 	// The length is 0
 	return e.Len(), io.EOF
 }
@@ -712,7 +718,7 @@ func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
 	if len(b) < e.Len() {
 		return 0, io.ErrShortBuffer
 	}
-	// https://tools.ietf.org/html/draft-balfanz-tls-channelid-00
+	// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10#section-3
 	b[0] = byte(fakeCertCompressionAlgs >> 8)
 	b[1] = byte(fakeCertCompressionAlgs & 0xff)
 
@@ -721,8 +727,11 @@ func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
 		return 0, errors.New("too many certificate compression methods")
 	}
 
+	// Extension data length.
 	b[2] = byte((extLen + 1) >> 8)
 	b[3] = byte((extLen + 1) & 0xff)
+
+	// Methods length.
 	b[4] = byte(extLen)
 
 	i := 5
@@ -759,5 +768,39 @@ func (e *FakeRecordSizeLimitExtension) Read(b []byte) (int, error) {
 
 	b[4] = byte(e.Limit >> 8)
 	b[5] = byte(e.Limit & 0xff)
+	return e.Len(), io.EOF
+}
+
+// https://tools.ietf.org/html/rfc8472#section-2
+
+type FakeTokenBindingExtension struct {
+	MajorVersion, MinorVersion uint8
+	KeyParameters              []uint8
+}
+
+func (e *FakeTokenBindingExtension) writeToUConn(uc *UConn) error {
+	return nil
+}
+
+func (e *FakeTokenBindingExtension) Len() int {
+	// extension ID + data length + versions + key parameters length + key parameters
+	return 2 + 2 + 2 + 1 + len(e.KeyParameters)
+}
+
+func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
+	if len(b) < e.Len() {
+		return 0, io.ErrShortBuffer
+	}
+	dataLen := e.Len() - 4
+	b[0] = byte(fakeExtensionTokenBinding >> 8)
+	b[1] = byte(fakeExtensionTokenBinding & 0xff)
+	b[2] = byte(dataLen >> 8)
+	b[3] = byte(dataLen & 0xff)
+	b[4] = e.MajorVersion
+	b[5] = e.MinorVersion
+	b[6] = byte(len(e.KeyParameters))
+	if len(e.KeyParameters) > 0 {
+		copy(b[7:], e.KeyParameters)
+	}
 	return e.Len(), io.EOF
 }

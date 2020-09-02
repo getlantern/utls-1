@@ -1617,8 +1617,44 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 		case utlsExtensionPadding:
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsPaddingExtension{GetPaddingLen: BoringPaddingStyle})
 
-		case fakeExtensionChannelID, fakeCertCompressionAlgs, fakeRecordSizeLimit:
-			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
+		case fakeExtensionChannelID:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeChannelIDExtension{})
+
+		case fakeExtensionChannelIDOld:
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeChannelIDExtension{true})
+
+		case fakeExtensionTokenBinding:
+			var tokenBindingExt FakeTokenBindingExtension
+			var keyParameters cryptobyte.String
+			if !extData.ReadUint8(&tokenBindingExt.MajorVersion) ||
+				!extData.ReadUint8(&tokenBindingExt.MinorVersion) ||
+				!extData.ReadUint8LengthPrefixed(&keyParameters) {
+				return nil, errors.New("unable to read token binding extension data")
+			}
+			tokenBindingExt.KeyParameters = keyParameters
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &tokenBindingExt)
+
+		case fakeRecordSizeLimit:
+			recordSizeExt := new(FakeRecordSizeLimitExtension)
+			if !extData.ReadUint16(&recordSizeExt.Limit) {
+				return nil, errors.New("unable to read record size limit extension data")
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, recordSizeExt)
+
+		case fakeCertCompressionAlgs:
+			methods := []CertCompressionAlgo{}
+			methodsRaw := new(cryptobyte.String)
+			if !extData.ReadUint8LengthPrefixed(methodsRaw) {
+				return nil, errors.New("unable to read cert compression algorithms extension data")
+			}
+			for !methodsRaw.Empty() {
+				var method uint16
+				if !methodsRaw.ReadUint16(&method) {
+					return nil, errors.New("unable to read cert compression algorithms extension data")
+				}
+				methods = append(methods, CertCompressionAlgo(method))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeCertCompressionAlgsExtension{methods})
 
 		case extensionPreSharedKey:
 			// RFC 8446, Section 4.2.11
