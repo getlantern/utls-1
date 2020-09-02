@@ -1197,8 +1197,27 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			tokenBindingExt.KeyParameters = keyParameters
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &tokenBindingExt)
 
-		case fakeCertCompressionAlgs, fakeRecordSizeLimit:
-			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &GenericExtension{extension, extData})
+		case fakeRecordSizeLimit:
+			recordSizeExt := new(FakeRecordSizeLimitExtension)
+			if !extData.ReadUint16(&recordSizeExt.Limit) {
+				return nil, errors.New("unable to read record size limit extension data")
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, recordSizeExt)
+
+		case fakeCertCompressionAlgs:
+			methods := []CertCompressionAlgo{}
+			methodsRaw := new(cryptobyte.String)
+			if !extData.ReadUint8LengthPrefixed(methodsRaw) {
+				return nil, errors.New("unable to read cert compression algorithms extension data")
+			}
+			for !methodsRaw.Empty() {
+				var method uint16
+				if !methodsRaw.ReadUint16(&method) {
+					return nil, errors.New("unable to read cert compression algorithms extension data")
+				}
+				methods = append(methods, CertCompressionAlgo(method))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeCertCompressionAlgsExtension{methods})
 
 		case extensionPreSharedKey:
 			// RFC 8446, Section 4.2.11
