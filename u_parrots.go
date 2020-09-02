@@ -796,12 +796,11 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					},
 				},
 				&UtlsExtendedMasterSecretExtension{},
-				&GenericExtension{
-					// Token Binding:
-					// https://tools.ietf.org/html/rfc8472
-					Id: 24,
-					Data: []byte{
-						0, 16, 3, 2, 1, 0,
+				&FakeTokenBindingExtension{
+					MajorVersion: 0,
+					MinorVersion: 16,
+					[]uint8{
+						2, 1, 0,
 					},
 				},
 				&RenegotiationInfoExtension{
@@ -863,11 +862,8 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						"http/1.1",
 					},
 				},
-				&GenericExtension{
-					// Channel ID (old extension ID):
-					// https://tools.ietf.org/id/draft-balfanz-tls-channelid-01.html
-					Id:   30031,
-					Data: []byte{},
+				&FakeChannelIDExtension{
+					OldExtensionID: true,
 				},
 				&StatusRequestExtension{},
 				&SignatureAlgorithmsExtension{
@@ -934,12 +930,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						"http/1.1",
 					},
 				},
-				&GenericExtension{
-					// Channel ID:
-					// https://tools.ietf.org/id/draft-balfanz-tls-channelid-01.html
-					Id:   30032,
-					Data: []byte{},
-				},
+				&FakeChannelIDExtension{},
 				&SupportedPointsExtension{
 					SupportedPoints: []uint8{
 						0x0, // pointFormatUncompressed
@@ -953,12 +944,9 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						CurveP384,
 					},
 				},
-				&GenericExtension{
-					// Certificate Compression:
-					// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10
-					Id: 27,
-					Data: []byte{
-						2, 0, 2,
+				&FakeCertCompressionAlgsExtension{
+					Methods: []CertCompressionAlgo{
+						CertCompressionBrotli,
 					},
 				},
 				&UtlsGREASEExtension{},
