@@ -204,15 +204,15 @@ func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID, 
 
 func TestUTLSFingerprintClientHello(t *testing.T) {
 	clientHellosToTest := []ClientHelloID{
-		HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63, HelloIOS_11_1, HelloIOS_12_1, HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN}
+		HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63,
+		HelloEdge_85, HelloExplorer_11, Hello360_7_5, HelloQQ_10_6, HelloIOS_11_1, HelloIOS_12_1,
+		HelloRandomized, HelloRandomizedALPN, HelloRandomizedNoALPN,
+	}
 
-	serverNames := []string{"foobar"}
-
+	serverName := "foobar"
 	for _, clientHello := range clientHellosToTest {
-		for _, serverName := range serverNames {
-			t.Logf("checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
-			checkUTLSFingerPrintClientHello(t, clientHello, "foobar")
-		}
+		t.Logf("checking fingerprint generated client hello spec against %v and server name: %v", clientHello, serverName)
+		checkUTLSFingerPrintClientHello(t, clientHello, serverName)
 	}
 }
 

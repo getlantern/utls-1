@@ -151,6 +151,89 @@ func TestUTLSHandshakeClientParrotFirefox_55(t *testing.T) {
 	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
 }
 
+func TestUTLSHandshakeClientParrotEdge_85(t *testing.T) {
+	hello := &helloID{HelloEdge_85}
+
+	testUTLSHandshakeClientTLS13_AES_128_GCM_SHA256(t, hello)
+	testUTLSHandshakeClientTLS13_AES_256_GCM_SHA384(t, hello)
+	testUTLSHandshakeClientTLS13_CHACHA20_POLY1305_SHA256(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_GCM_SHA256(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_GCM_SHA256(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_WITH_CHACHA20_POLY1305(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+
+	testUTLSHandshakeClientRSA_AES128_GCM_SHA256(t, hello)
+}
+
+func TestUTLSHandshakeClientParrotSafari_13_1(t *testing.T) {
+	hello := &helloID{HelloSafari_13_1}
+
+	testUTLSHandshakeClientTLS13_AES_128_GCM_SHA256(t, hello)
+	testUTLSHandshakeClientTLS13_AES_256_GCM_SHA384(t, hello)
+	testUTLSHandshakeClientTLS13_CHACHA20_POLY1305_SHA256(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_GCM_SHA256(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_GCM_SHA256(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_WITH_CHACHA20_POLY1305(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+
+	testUTLSHandshakeClientRSA_AES128_GCM_SHA256(t, hello)
+}
+
+func TestUTLSHandshakeClientParrotExplorer_11(t *testing.T) {
+	hello := &helloID{HelloExplorer_11}
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+
+	// TODO: These should be supported by Explorer 11 but I can't
+	// get my reference version of openssl to work w/ them
+	// testUTLSHandshakeClientECDHE_ECDSA_AES128_GCM_SHA256(t, hello)
+	// testUTLSHandshakeClientECDHE_ECDSA_AES256_CBC_SHA(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+
+	testUTLSHandshakeClientRSA_AES128_GCM_SHA256(t, hello)
+
+}
+
+func TestUTLSHandshakeClientParrot360_7_5(t *testing.T) {
+	hello := &helloID{Hello360_7_5}
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+
+	testUTLSHandshakeClientECDHE_ECDSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_ECDSA_AES256_CBC_SHA(t, hello)
+}
+
+func TestUTLSHandshakeClientParrotQQ_10_6(t *testing.T) {
+	hello := &helloID{HelloQQ_10_6}
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_CBC_SHA(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_CBC_SHA(t, hello)
+
+	// TODO: These _should_ be supported by QQ 10.6 but I can't
+	// get my reference version of openssl to work w/ them
+	// testUTLSHandshakeClientECDHE_ECDSA_AES128_GCM_SHA256(t, hello)
+
+	// testUTLSHandshakeClientECDHE_RSA_WITH_CHACHA20_POLY1305(t, hello)
+	// testUTLSHandshakeClientECDHE_ECDSA_WITH_CHACHA20_POLY1305(t, hello)
+
+	testUTLSHandshakeClientECDHE_RSA_AES128_GCM_SHA256(t, hello)
+	testUTLSHandshakeClientECDHE_RSA_AES256_GCM_SHA256(t, hello)
+
+	testUTLSHandshakeClientRSA_AES128_GCM_SHA256(t, hello)
+}
+
 func TestUTLSHandshakeClientParrotChrome_58_setclienthello(t *testing.T) {
 	hello := &helloID{HelloChrome_58}
 	config := getUTLSTestConfig()
