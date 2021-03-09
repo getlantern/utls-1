@@ -5,6 +5,7 @@
 package tls
 
 import (
+	"crypto/x509"
 	"errors"
 	"io"
 )
@@ -17,6 +18,8 @@ type TLSExtension interface {
 	// Read reads up to len(p) bytes into p.
 	// It returns the number of bytes read (0 <= n <= len(p)) and any error encountered.
 	Read(p []byte) (n int, err error) // implements io.Reader
+
+	Clone() TLSExtension
 }
 
 type NPNExtension struct {
@@ -41,6 +44,12 @@ func (e *NPNExtension) Read(b []byte) (int, error) {
 	b[1] = byte(extensionNextProtoNeg & 0xff)
 	// The length is always 0
 	return e.Len(), io.EOF
+}
+
+func (e *NPNExtension) Clone() TLSExtension {
+	clone := &NPNExtension{make([]string, len(e.NextProtos))}
+	copy(clone.NextProtos, e.NextProtos)
+	return clone
 }
 
 type SNIExtension struct {
@@ -81,6 +90,10 @@ func (e *SNIExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *SNIExtension) Clone() TLSExtension {
+	return &SNIExtension{e.ServerName}
+}
+
 type StatusRequestExtension struct {
 }
 
@@ -105,6 +118,10 @@ func (e *StatusRequestExtension) Read(b []byte) (int, error) {
 	b[4] = 1 // OCSP type
 	// Two zero valued uint16s for the two lengths.
 	return e.Len(), io.EOF
+}
+
+func (e *StatusRequestExtension) Clone() TLSExtension {
+	return &StatusRequestExtension{}
 }
 
 type SupportedCurvesExtension struct {
@@ -139,6 +156,12 @@ func (e *SupportedCurvesExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *SupportedCurvesExtension) Clone() TLSExtension {
+	clone := &SupportedCurvesExtension{make([]CurveID, len(e.Curves))}
+	copy(clone.Curves, e.Curves)
+	return clone
+}
+
 type SupportedPointsExtension struct {
 	SupportedPoints []uint8
 }
@@ -166,6 +189,12 @@ func (e *SupportedPointsExtension) Read(b []byte) (int, error) {
 		b[5+i] = pointFormat
 	}
 	return e.Len(), io.EOF
+}
+
+func (e *SupportedPointsExtension) Clone() TLSExtension {
+	clone := &SupportedPointsExtension{make([]uint8, len(e.SupportedPoints))}
+	copy(clone.SupportedPoints, e.SupportedPoints)
+	return clone
 }
 
 type SignatureAlgorithmsExtension struct {
@@ -197,6 +226,12 @@ func (e *SignatureAlgorithmsExtension) Read(b []byte) (int, error) {
 		b[7+2*i] = byte(sigAndHash)
 	}
 	return e.Len(), io.EOF
+}
+
+func (e *SignatureAlgorithmsExtension) Clone() TLSExtension {
+	clone := &SignatureAlgorithmsExtension{make([]SignatureScheme, len(e.SupportedSignatureAlgorithms))}
+	copy(e.SupportedSignatureAlgorithms, e.SupportedSignatureAlgorithms)
+	return clone
 }
 
 type RenegotiationInfoExtension struct {
@@ -239,6 +274,10 @@ func (e *RenegotiationInfoExtension) Read(b []byte) (int, error) {
 	copy(b[5:], extInnerBody)
 
 	return e.Len(), io.EOF
+}
+
+func (e *RenegotiationInfoExtension) Clone() TLSExtension {
+	return &RenegotiationInfoExtension{e.Renegotiation}
 }
 
 type ALPNExtension struct {
@@ -288,6 +327,12 @@ func (e *ALPNExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *ALPNExtension) Clone() TLSExtension {
+	clone := &ALPNExtension{make([]string, len(e.AlpnProtocols))}
+	copy(clone.AlpnProtocols, e.AlpnProtocols)
+	return clone
+}
+
 type SCTExtension struct {
 }
 
@@ -309,6 +354,10 @@ func (e *SCTExtension) Read(b []byte) (int, error) {
 	b[1] = byte(extensionSCT)
 	// zero uint16 for the zero-length extension_data
 	return e.Len(), io.EOF
+}
+
+func (e *SCTExtension) Clone() TLSExtension {
+	return &SCTExtension{}
 }
 
 type SessionTicketExtension struct {
@@ -347,6 +396,30 @@ func (e *SessionTicketExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *SessionTicketExtension) Clone() TLSExtension {
+	if e.Session == nil {
+		return &SessionTicketExtension{}
+	}
+	clone := &SessionTicketExtension{&ClientSessionState{
+		make([]uint8, len(e.Session.sessionTicket)),
+		e.Session.vers,
+		e.Session.cipherSuite,
+		make([]byte, len(e.Session.masterSecret)),
+		make([]*x509.Certificate, len(e.Session.serverCertificates)),
+		make([][]*x509.Certificate, len(e.Session.verifiedChains)),
+		e.Session.receivedAt,
+		make([]byte, len(e.Session.nonce)),
+		e.Session.useBy,
+		e.Session.ageAdd,
+	}}
+	copy(clone.Session.sessionTicket, e.Session.sessionTicket)
+	copy(clone.Session.masterSecret, e.Session.masterSecret)
+	copy(clone.Session.serverCertificates, e.Session.serverCertificates)
+	copy(clone.Session.verifiedChains, e.Session.verifiedChains)
+	copy(clone.Session.nonce, e.Session.nonce)
+	return clone
+}
+
 // GenericExtension allows to include in ClientHello arbitrary unsupported extensions.
 type GenericExtension struct {
 	Id   uint16
@@ -376,6 +449,12 @@ func (e *GenericExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *GenericExtension) Clone() TLSExtension {
+	clone := &GenericExtension{e.Id, make([]byte, len(e.Data))}
+	copy(clone.Data, e.Data)
+	return clone
+}
+
 type UtlsExtendedMasterSecretExtension struct {
 }
 
@@ -399,6 +478,10 @@ func (e *UtlsExtendedMasterSecretExtension) Read(b []byte) (int, error) {
 	b[1] = byte(utlsExtensionExtendedMasterSecret)
 	// The length is 0
 	return e.Len(), io.EOF
+}
+
+func (e *UtlsExtendedMasterSecretExtension) Clone() TLSExtension {
+	return &UtlsExtendedMasterSecretExtension{}
 }
 
 var extendedMasterSecretLabel = []byte("extended master secret")
@@ -464,12 +547,19 @@ func (e *UtlsGREASEExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *UtlsGREASEExtension) Clone() TLSExtension {
+	clone := &UtlsGREASEExtension{e.Value, make([]byte, len(e.Body))}
+	copy(clone.Body, e.Body)
+	return clone
+}
+
 type UtlsPaddingExtension struct {
 	PaddingLen int
 	WillPad    bool // set to false to disable extension
 
 	// Functor for deciding on padding length based on unpadded ClientHello length.
 	// If willPad is false, then this extension should not be included.
+	// Should be stateless.
 	GetPaddingLen func(clientHelloUnpaddedLen int) (paddingLen int, willPad bool)
 }
 
@@ -504,6 +594,10 @@ func (e *UtlsPaddingExtension) Read(b []byte) (int, error) {
 	b[2] = byte(e.PaddingLen >> 8)
 	b[3] = byte(e.PaddingLen)
 	return e.Len(), io.EOF
+}
+
+func (e *UtlsPaddingExtension) Clone() TLSExtension {
+	return &UtlsPaddingExtension{e.PaddingLen, e.WillPad, e.GetPaddingLen}
 }
 
 // https://github.com/google/boringssl/blob/7d7554b6b3c79e707e25521e61e066ce2b996e4c/ssl/t1_lib.c#L2803
@@ -568,6 +662,15 @@ func (e *KeyShareExtension) writeToUConn(uc *UConn) error {
 	return nil
 }
 
+func (e *KeyShareExtension) Clone() TLSExtension {
+	clone := &KeyShareExtension{make([]KeyShare, len(e.KeyShares))}
+	for i, ks := range e.KeyShares {
+		clone.KeyShares[i] = KeyShare{ks.Group, make([]byte, len(ks.Data))}
+		copy(clone.KeyShares[i].Data, ks.Data)
+	}
+	return clone
+}
+
 type PSKKeyExchangeModesExtension struct {
 	Modes []uint8
 }
@@ -603,6 +706,12 @@ func (e *PSKKeyExchangeModesExtension) Read(b []byte) (int, error) {
 func (e *PSKKeyExchangeModesExtension) writeToUConn(uc *UConn) error {
 	uc.HandshakeState.Hello.PskModes = e.Modes
 	return nil
+}
+
+func (e *PSKKeyExchangeModesExtension) Clone() TLSExtension {
+	clone := &PSKKeyExchangeModesExtension{make([]uint8, len(e.Modes))}
+	copy(clone.Modes, e.Modes)
+	return clone
 }
 
 type SupportedVersionsExtension struct {
@@ -642,6 +751,12 @@ func (e *SupportedVersionsExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *SupportedVersionsExtension) Clone() TLSExtension {
+	clone := &SupportedVersionsExtension{make([]uint16, len(e.Versions))}
+	copy(clone.Versions, e.Versions)
+	return clone
+}
+
 // MUST NOT be part of initial ClientHello
 type CookieExtension struct {
 	Cookie []byte
@@ -668,6 +783,12 @@ func (e *CookieExtension) Read(b []byte) (int, error) {
 		copy(b[4:], e.Cookie)
 	}
 	return e.Len(), io.EOF
+}
+
+func (e *CookieExtension) Clone() TLSExtension {
+	clone := &CookieExtension{make([]byte, len(e.Cookie))}
+	copy(clone.Cookie, e.Cookie)
+	return clone
 }
 
 /*
@@ -700,6 +821,10 @@ func (e *FakeChannelIDExtension) Read(b []byte) (int, error) {
 	b[1] = byte(extensionID & 0xff)
 	// The length is 0
 	return e.Len(), io.EOF
+}
+
+func (e *FakeChannelIDExtension) Clone() TLSExtension {
+	return &FakeChannelIDExtension{e.OldExtensionID}
 }
 
 type FakeCertCompressionAlgsExtension struct {
@@ -743,6 +868,12 @@ func (e *FakeCertCompressionAlgsExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
+func (e *FakeCertCompressionAlgsExtension) Clone() TLSExtension {
+	clone := &FakeCertCompressionAlgsExtension{make([]CertCompressionAlgo, len(e.Methods))}
+	copy(clone.Methods, e.Methods)
+	return clone
+}
+
 type FakeRecordSizeLimitExtension struct {
 	Limit uint16
 }
@@ -769,6 +900,10 @@ func (e *FakeRecordSizeLimitExtension) Read(b []byte) (int, error) {
 	b[4] = byte(e.Limit >> 8)
 	b[5] = byte(e.Limit & 0xff)
 	return e.Len(), io.EOF
+}
+
+func (e *FakeRecordSizeLimitExtension) Clone() TLSExtension {
+	return &FakeRecordSizeLimitExtension{e.Limit}
 }
 
 // https://tools.ietf.org/html/rfc8472#section-2
@@ -803,4 +938,14 @@ func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
 		copy(b[7:], e.KeyParameters)
 	}
 	return e.Len(), io.EOF
+}
+
+func (e *FakeTokenBindingExtension) Clone() TLSExtension {
+	clone := &FakeTokenBindingExtension{
+		e.MajorVersion,
+		e.MinorVersion,
+		make([]uint8, len(e.KeyParameters)),
+	}
+	copy(clone.KeyParameters, e.KeyParameters)
+	return clone
 }

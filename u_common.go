@@ -133,9 +133,29 @@ type ClientHelloSpec struct {
 
 	// GreaseStyle: currently only random
 	// sessionID may or may not depend on ticket; nil => random
+	// This function must be stateless.
 	GetSessionID func(ticket []byte) [32]byte
 
 	// TLSFingerprintLink string // ?? link to tlsfingerprint.io for informational purposes
+}
+
+// Clone this spec. This is useful when providing specs to UConn.ApplyPreset as using the same spec
+// multiple times can lead to bugs.
+func (spec ClientHelloSpec) Clone() ClientHelloSpec {
+	clone := ClientHelloSpec{
+		make([]uint16, len(spec.CipherSuites)),
+		make([]uint8, len(spec.CompressionMethods)),
+		make([]TLSExtension, len(spec.Extensions)),
+		spec.TLSVersMin,
+		spec.TLSVersMax,
+		spec.GetSessionID,
+	}
+	copy(clone.CipherSuites, spec.CipherSuites)
+	copy(clone.CompressionMethods, spec.CompressionMethods)
+	for i, ext := range spec.Extensions {
+		clone.Extensions[i] = ext.Clone()
+	}
+	return clone
 }
 
 var (
