@@ -230,7 +230,7 @@ func (e *SignatureAlgorithmsExtension) Read(b []byte) (int, error) {
 
 func (e *SignatureAlgorithmsExtension) Clone() TLSExtension {
 	clone := &SignatureAlgorithmsExtension{make([]SignatureScheme, len(e.SupportedSignatureAlgorithms))}
-	copy(e.SupportedSignatureAlgorithms, e.SupportedSignatureAlgorithms)
+	copy(clone.SupportedSignatureAlgorithms, e.SupportedSignatureAlgorithms)
 	return clone
 }
 
