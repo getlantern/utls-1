@@ -141,8 +141,8 @@ type ClientHelloSpec struct {
 
 // Clone this spec. This is useful when providing specs to UConn.ApplyPreset as using the same spec
 // multiple times can lead to bugs.
-func (spec ClientHelloSpec) Clone() ClientHelloSpec {
-	clone := ClientHelloSpec{
+func (spec ClientHelloSpec) Clone() *ClientHelloSpec {
+	clone := &ClientHelloSpec{
 		make([]uint16, len(spec.CipherSuites)),
 		make([]uint8, len(spec.CompressionMethods)),
 		make([]TLSExtension, len(spec.Extensions)),
