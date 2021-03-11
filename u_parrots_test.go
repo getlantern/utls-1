@@ -6,10 +6,14 @@ package tls
 
 import (
 	"bytes"
+	"crypto/x509"
+	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func assertEquality(t *testing.T, fieldName string, expected, actual interface{}) {
@@ -202,6 +206,95 @@ func checkUTLSFingerPrintClientHello(t *testing.T, clientHelloID ClientHelloID, 
 	}
 }
 
+// Asserts that objA and objB have no common references. To illustrate, the following would fail:
+//   ref := new(someType)
+//   checkNoSharedReferences(t, foo{ref}, foo{ref})
+// while the following would pass:
+//   checkNoSharedReferences(t, foo{new(someType)}, foo{new(someType)})
+//
+// Only like fields are compared (e.g. the same field on two structs or the same element in two
+// slices).
+func checkNoSharedReferences(t *testing.T, objA, objB interface{}) {
+	t.Helper()
+	if objA == nil || objB == nil {
+		return
+	}
+	checkNoSharedReferencesHelper(t, reflect.ValueOf(objA), reflect.ValueOf(objB), "topLevelValue")
+}
+
+func checkNoSharedReferencesHelper(t *testing.T, vA, vB reflect.Value, name string) {
+	t.Helper()
+
+	isNil := func(v reflect.Value) bool {
+		zeroValue := reflect.Value{}
+		if v == zeroValue {
+			return true
+		}
+		switch v.Kind() {
+		case reflect.Ptr, reflect.Chan, reflect.Func, reflect.Map, reflect.Slice:
+			return v.IsNil()
+		}
+		return false
+	}
+
+	if isNil(vA) || isNil(vB) {
+		return
+	}
+
+	if vA.Type() != vB.Type() {
+		t.Errorf("expected two objects of the same type; got %v and %v", vA.Type(), vB.Type())
+	}
+
+	// First, if this is a reference type, check that A and B don't point to the same value.
+	switch vA.Kind() {
+	case reflect.UnsafePointer:
+		t.Errorf("cannot check %v; unsafe pointer unimplemented", name)
+		return
+	case reflect.Chan, reflect.Func, reflect.Map:
+		if vA.Pointer() == vB.Pointer() {
+			t.Errorf("shared reference to %v", name)
+		}
+	case reflect.Slice:
+		// Two distinct zero-size variables may have the same address in memory.
+		// https://golang.org/ref/spec#Size_and_alignment_guarantees
+		if vA.Len() != 0 && vA.Pointer() == vB.Pointer() {
+			t.Errorf("shared reference to %v", name)
+		}
+	case reflect.Ptr:
+		// Two distinct zero-size variables may have the same address in memory.
+		// https://golang.org/ref/spec#Size_and_alignment_guarantees
+		if vA.Type().Elem().Size() != 0 && vA.Pointer() == vB.Pointer() {
+			t.Errorf("shared reference to %v", name)
+		}
+	}
+
+	// Next check any contained elements.
+	switch vA.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		checkNoSharedReferencesHelper(t, vA.Elem(), vB.Elem(), name)
+	case reflect.Struct:
+		for i := 0; i < vA.NumField(); i++ {
+			fieldName := vA.Type().Field(i).Name
+			checkNoSharedReferencesHelper(t, vA.Field(i), vB.Field(i), name+"."+fieldName)
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < vA.Len() && i < vB.Len(); i++ {
+			elementName := fmt.Sprintf("%s[%d]", name, i)
+			checkNoSharedReferencesHelper(t, vA.Index(i), vB.Index(i), elementName)
+		}
+	case reflect.Map:
+		for _, k := range vA.MapKeys() {
+			elementName := fmt.Sprintf("%s[%v]", name, k)
+			valA, valB := vA.MapIndex(k), vB.MapIndex(k)
+			if valB.IsZero() {
+				// k does not appear in vB.
+				continue
+			}
+			checkNoSharedReferencesHelper(t, valA, valB, elementName)
+		}
+	}
+}
+
 func TestUTLSFingerprintClientHello(t *testing.T) {
 	clientHellosToTest := []ClientHelloID{
 		HelloChrome_58, HelloChrome_70, HelloChrome_83, HelloFirefox_55, HelloFirefox_63,
@@ -236,5 +329,110 @@ func TestUTLSIsGrease(t *testing.T) {
 		if isGREASEUint16(testCase.version) != testCase.isGREASE {
 			t.Errorf("misidentified GREASE: testing %x, isGREASE: %v", testCase.version, isGREASEUint16(testCase.version))
 		}
+	}
+}
+
+func TestTLSExtensionClone(t *testing.T) {
+	for _, ext := range []TLSExtension{
+		&NPNExtension{[]string{"a", "b", "c"}},
+		&SNIExtension{"foo"},
+		&StatusRequestExtension{},
+		&SupportedCurvesExtension{[]CurveID{0xa, 0xb, 0xc}},
+		&SupportedPointsExtension{[]uint8{0xa, 0xb, 0xc}},
+		&SignatureAlgorithmsExtension{[]SignatureScheme{0xa, 0xb, 0xc}},
+		&RenegotiationInfoExtension{3},
+		&ALPNExtension{[]string{"a", "b", "c"}},
+		&SCTExtension{},
+		&SessionTicketExtension{&ClientSessionState{
+			[]uint8{0x1, 0x2, 0x3},
+			0xaa,
+			0xbb,
+			[]byte("foo"),
+			[]*x509.Certificate{
+				{
+					Raw:                []byte("foo"),
+					Signature:          []byte("bar"),
+					PublicKeyAlgorithm: x509.RSA,
+					Version:            100,
+					SerialNumber:       big.NewInt(123456789),
+				},
+				{
+					Raw:                []byte("bar"),
+					Signature:          []byte("baz"),
+					PublicKeyAlgorithm: x509.ECDSA,
+					Version:            101,
+					SerialNumber:       big.NewInt(987654321),
+				},
+			},
+			[][]*x509.Certificate{
+				{
+					{
+						Raw:                []byte("foo"),
+						Signature:          []byte("bar"),
+						PublicKeyAlgorithm: x509.RSA,
+						Version:            100,
+						SerialNumber:       big.NewInt(123456789),
+					},
+					{
+						Raw:                []byte("bar"),
+						Signature:          []byte("baz"),
+						PublicKeyAlgorithm: x509.ECDSA,
+						Version:            101,
+						SerialNumber:       big.NewInt(987654321),
+					},
+				},
+				{
+					{
+						Raw:                []byte("baz"),
+						Signature:          []byte("foo"),
+						PublicKeyAlgorithm: x509.DSA,
+						Version:            102,
+						SerialNumber:       big.NewInt(11223344),
+					},
+					{
+						Raw:                []byte("baz"),
+						Signature:          []byte("bar"),
+						PublicKeyAlgorithm: x509.RSA,
+						Version:            103,
+						SerialNumber:       big.NewInt(55667788),
+					},
+				},
+			},
+			time.Now(),
+			[]byte("bar"),
+			time.Now().Add(time.Hour),
+			33,
+		}},
+		&GenericExtension{99, []byte("foo")},
+		&UtlsExtendedMasterSecretExtension{},
+		&UtlsGREASEExtension{33, []byte("bar")},
+		&UtlsPaddingExtension{3, true, func(_ int) (int, bool) { return 3, false }},
+		&KeyShareExtension{[]KeyShare{
+			{1, []byte("a")},
+			{2, []byte("b")},
+			{3, []byte("c")},
+		}},
+		&PSKKeyExchangeModesExtension{[]uint8{0xa, 0xb, 0xc}},
+		&SupportedVersionsExtension{[]uint16{0x1, 0x2, 0x3}},
+		&CookieExtension{[]byte("om nom nom")},
+		&FakeChannelIDExtension{true},
+		&FakeCertCompressionAlgsExtension{[]CertCompressionAlgo{0x1, 0x2, 0x3}},
+		&FakeRecordSizeLimitExtension{0xabc},
+		&FakeTokenBindingExtension{0xaa, 0xbb, []uint8{0x1, 0x2, 0x3}},
+	} {
+		t.Logf("testing %T", ext)
+		checkUTLSExtensionsEquality(t, ext, ext.Clone())
+		// We nil some of the fields when checking shared references as there are a few fields we
+		// are okay sharing.
+		switch e := ext.(type) {
+		case *SessionTicketExtension:
+			e.Session.serverCertificates = []*x509.Certificate{}
+			e.Session.verifiedChains = [][]*x509.Certificate{}
+			// These produce false postives as the Location will be a shared reference.
+			e.Session.receivedAt, e.Session.useBy = time.Time{}, time.Time{}
+		case *UtlsPaddingExtension:
+			e.GetPaddingLen = nil
+		}
+		checkNoSharedReferences(t, ext, ext.Clone())
 	}
 }
