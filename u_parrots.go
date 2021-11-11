@@ -1622,6 +1622,23 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			tokenBindingExt.KeyParameters = keyParameters
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &tokenBindingExt)
 
+		case fakeExtensionALPS:
+			// Similar to ALPN (RFC 7301, Section 3.1):
+			// https://datatracker.ietf.org/doc/html/draft-vvv-tls-alps#section-3
+			var protoList cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&protoList) || protoList.Empty() {
+				return nil, errors.New("unable to read ALPS extension data")
+			}
+			supportedProtocols := []string{}
+			for !protoList.Empty() {
+				var proto cryptobyte.String
+				if !protoList.ReadUint8LengthPrefixed(&proto) || proto.Empty() {
+					return nil, errors.New("unable to read ALPS extension data")
+				}
+				supportedProtocols = append(supportedProtocols, string(proto))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeALPSExtension{supportedProtocols})
+
 		case fakeRecordSizeLimit:
 			recordSizeExt := new(FakeRecordSizeLimitExtension)
 			if !extData.ReadUint16(&recordSizeExt.Limit) {
