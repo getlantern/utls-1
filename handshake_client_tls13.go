@@ -489,19 +489,22 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		}
 	}
 
-	// [utls disclaimer] TODO:
+	// [UTLS SECTION BEGINS]
 	receivedCompressedCert := false
-	compressedCertMsg, ok := msg.(*compressedCertificateMessage)
-	if ok {
-		receivedCompressedCert = true
-		hs.transcript.Write(compressedCertMsg.marshal())
+	if len(hs.uconn.certCompressionAlgs) > 0 { // If 0, then we didn't advertise cert compression.
+		// Check to see if the message is a compressed certificate message, otherwise move on.
+		compressedCertMsg, ok := msg.(*compressedCertificateMessage)
+		if ok {
+			receivedCompressedCert = true
+			hs.transcript.Write(compressedCertMsg.marshal())
 
-		msg, err = hs.decompressCert(*compressedCertMsg)
-		if err != nil {
-			return fmt.Errorf("tls: failed to decompress certificate message: %w", err)
+			msg, err = hs.decompressCert(*compressedCertMsg)
+			if err != nil {
+				return fmt.Errorf("tls: failed to decompress certificate message: %w", err)
+			}
 		}
 	}
-	// [end utls disclaimer] TODO:
+	// [UTLS SECTION ENDS]
 
 	certMsg, ok := msg.(*certificateMsgTLS13)
 	if !ok {
@@ -512,11 +515,12 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received empty certificates message")
 	}
-	// [utls disclaimer] TODO:
+	// [UTLS SECTION BEGINS]
+	// Previously, this was simply 'hs.transcript.Write(certMsg.marshal())' (without the if).
 	if !receivedCompressedCert {
 		hs.transcript.Write(certMsg.marshal())
 	}
-	// [end utls disclaimer] TODO:
+	// [UTLS SECTION ENDS]
 
 	c.scts = certMsg.certificate.SignedCertificateTimestamps
 	c.ocspResponse = certMsg.certificate.OCSPStaple
@@ -713,13 +717,25 @@ func (hs *clientHandshakeStateTLS13) sendClientFinished() error {
 	return nil
 }
 
-// [ults disclaimer]
+// [UTLS SECTION BEGINS]
 func (hs *clientHandshakeStateTLS13) decompressCert(m compressedCertificateMessage) (*certificateMsgTLS13, error) {
 	var (
 		decompressed io.Reader
 		compressed   = bytes.NewReader(m.compressedCertificateMessage)
 		c            = hs.c
 	)
+
+	// Check to see if the peer responded with an algorithm we advertised.
+	supportedAlg := false
+	for _, alg := range hs.uconn.certCompressionAlgs {
+		if m.algorithm == uint16(alg) {
+			supportedAlg = true
+		}
+	}
+	if !supportedAlg {
+		c.sendAlert(alertBadCertificate)
+		return nil, fmt.Errorf("unadvertised algorithm (%d)", m.algorithm)
+	}
 
 	switch CertCompressionAlgo(m.algorithm) {
 	case CertCompressionBrotli:
@@ -773,7 +789,7 @@ func (hs *clientHandshakeStateTLS13) decompressCert(m compressedCertificateMessa
 	return certMsg, nil
 }
 
-// [end utls disclaimer]
+// [UTLS SECTION ENDS]
 
 func (c *Conn) handleNewSessionTicket(msg *newSessionTicketMsgTLS13) error {
 	if !c.isClient {

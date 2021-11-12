@@ -679,6 +679,7 @@ type UtlsCompressCertExtension struct {
 }
 
 func (e *UtlsCompressCertExtension) writeToUConn(uc *UConn) error {
+	uc.certCompressionAlgs = e.Algorithms
 	return nil
 }
 
