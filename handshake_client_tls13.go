@@ -491,7 +491,8 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 
 	// [UTLS SECTION BEGINS]
 	receivedCompressedCert := false
-	if len(hs.uconn.certCompressionAlgs) > 0 { // If 0, then we didn't advertise cert compression.
+	// Check to see if we advertised any compression algorithms
+	if hs.uconn != nil && len(hs.uconn.certCompressionAlgs) > 0 {
 		// Check to see if the message is a compressed certificate message, otherwise move on.
 		compressedCertMsg, ok := msg.(*compressedCertificateMessage)
 		if ok {
