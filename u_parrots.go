@@ -136,7 +136,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					CurveP256,
 					CurveP384,
 				}},
-				&FakeCertCompressionAlgsExtension{[]CertCompressionAlgo{CertCompressionBrotli}},
+				&UtlsCompressCertExtension{[]CertCompressionAlgo{CertCompressionBrotli}},
 				&UtlsGREASEExtension{},
 				&UtlsPaddingExtension{GetPaddingLen: BoringPaddingStyle},
 			},
@@ -208,7 +208,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					VersionTLS11,
 					VersionTLS10,
 				}},
-				&FakeCertCompressionAlgsExtension{[]CertCompressionAlgo{
+				&UtlsCompressCertExtension{[]CertCompressionAlgo{
 					CertCompressionBrotli,
 				}},
 				&UtlsGREASEExtension{},
@@ -280,7 +280,7 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 					VersionTLS11,
 					VersionTLS10,
 				}},
-				&FakeCertCompressionAlgsExtension{[]CertCompressionAlgo{
+				&UtlsCompressCertExtension{[]CertCompressionAlgo{
 					CertCompressionBrotli,
 				}},
 				&UtlsGREASEExtension{},
@@ -944,8 +944,8 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						CurveP384,
 					},
 				},
-				&FakeCertCompressionAlgsExtension{
-					Methods: []CertCompressionAlgo{
+				&UtlsCompressCertExtension{
+					Algorithms: []CertCompressionAlgo{
 						CertCompressionBrotli,
 					},
 				},
@@ -1646,7 +1646,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			}
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, recordSizeExt)
 
-		case fakeCertCompressionAlgs:
+		case utlsExtensionCompressCertificate:
 			methods := []CertCompressionAlgo{}
 			methodsRaw := new(cryptobyte.String)
 			if !extData.ReadUint8LengthPrefixed(methodsRaw) {
@@ -1659,7 +1659,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 				}
 				methods = append(methods, CertCompressionAlgo(method))
 			}
-			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeCertCompressionAlgsExtension{methods})
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsCompressCertExtension{methods})
 
 		case extensionPreSharedKey:
 			// RFC 8446, Section 4.2.11
