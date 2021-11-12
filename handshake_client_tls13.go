@@ -484,6 +484,20 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		}
 	}
 
+	// [utls disclaimer] TODO:
+	compressedCert := false
+	compressedCertMsg, ok := msg.(*compressedCertificateMessage)
+	if ok {
+		compressedCert = true
+		hs.transcript.Write(compressedCertMsg.marshal())
+
+		msg, err = compressedCertMsg.decompress()
+		if err != nil {
+			return fmt.Errorf("tls: failed to decompress certificate message: %w", err)
+		}
+	}
+	// [end utls disclaimer] TODO:
+
 	certMsg, ok := msg.(*certificateMsgTLS13)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
@@ -493,7 +507,11 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 		c.sendAlert(alertDecodeError)
 		return errors.New("tls: received empty certificates message")
 	}
-	hs.transcript.Write(certMsg.marshal())
+	// [utls disclaimer] TODO:
+	if !compressedCert {
+		hs.transcript.Write(certMsg.marshal())
+	}
+	// [end utls disclaimer] TODO:
 
 	c.scts = certMsg.certificate.SignedCertificateTimestamps
 	c.ocspResponse = certMsg.certificate.OCSPStaple

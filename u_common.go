@@ -27,6 +27,9 @@ const (
 
 	fakeCertCompressionAlgs uint16 = 0x001b
 	fakeRecordSizeLimit     uint16 = 0x001c
+
+	// https://datatracker.ietf.org/doc/html/rfc8879#section-7.2
+	typeCompressedCertificate uint8 = 25
 )
 
 const (
@@ -77,6 +80,7 @@ type CertCompressionAlgo uint16
 const (
 	CertCompressionZlib   CertCompressionAlgo = 0x0001
 	CertCompressionBrotli CertCompressionAlgo = 0x0002
+	CertCompressionZstd   CertCompressionAlgo = 0x0003
 )
 
 const (
