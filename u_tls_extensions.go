@@ -670,10 +670,10 @@ func (e *CookieExtension) Read(b []byte) (int, error) {
 	return e.Len(), io.EOF
 }
 
-// Only implemented client-side, for server certificates.
-// Alternate certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not
-// supported.
-// https://datatracker.ietf.org/doc/html/rfc8879#section-3
+// UtlsCompressCertExtension is only implemented client-side, for server certificates. Alternate
+// certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not supported.
+//
+// See https://datatracker.ietf.org/doc/html/rfc8879#section-3
 type UtlsCompressCertExtension struct {
 	Algorithms []CertCompressionAlgo
 }
