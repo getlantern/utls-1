@@ -1059,7 +1059,7 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = new(keyUpdateMsg)
 	// [UTLS SECTION BEGINS]
 	case typeCompressedCertificate:
-		m = new(compressedCertificateMessage)
+		m = new(compressedCertificateMsg)
 	// [UTLS SECTION ENDS]
 	default:
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))

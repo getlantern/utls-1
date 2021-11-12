@@ -8,7 +8,7 @@ import (
 // Alternate certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not
 // supported.
 // https://datatracker.ietf.org/doc/html/rfc8879
-type compressedCertificateMessage struct {
+type compressedCertificateMsg struct {
 	raw []byte
 
 	algorithm                    uint16
@@ -16,23 +16,27 @@ type compressedCertificateMessage struct {
 	compressedCertificateMessage []byte
 }
 
-func (m *compressedCertificateMessage) marshal() []byte {
+func (m *compressedCertificateMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
 
 	var b cryptobyte.Builder
 	b.AddUint8(typeCompressedCertificate)
-	b.AddUint16(m.algorithm)
-	b.AddUint24(m.uncompressedLength)
-	b.AddBytes(m.compressedCertificateMessage)
+	b.AddUint24LengthPrefixed(func(b *cryptobyte.Builder) {
+		b.AddUint16(m.algorithm)
+		b.AddUint24(m.uncompressedLength)
+		b.AddUint24LengthPrefixed(func(b *cryptobyte.Builder) {
+			b.AddBytes(m.compressedCertificateMessage)
+		})
+	})
 
 	m.raw = b.BytesOrPanic()
 	return m.raw
 }
 
-func (m *compressedCertificateMessage) unmarshal(data []byte) bool {
-	*m = compressedCertificateMessage{raw: data}
+func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
+	*m = compressedCertificateMsg{raw: data}
 	s := cryptobyte.String(data)
 
 	if !s.Skip(4) || // message type and uint24 length field

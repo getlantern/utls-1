@@ -494,7 +494,7 @@ func (hs *clientHandshakeStateTLS13) readServerCertificate() error {
 	// Check to see if we advertised any compression algorithms
 	if hs.uconn != nil && len(hs.uconn.certCompressionAlgs) > 0 {
 		// Check to see if the message is a compressed certificate message, otherwise move on.
-		compressedCertMsg, ok := msg.(*compressedCertificateMessage)
+		compressedCertMsg, ok := msg.(*compressedCertificateMsg)
 		if ok {
 			receivedCompressedCert = true
 			hs.transcript.Write(compressedCertMsg.marshal())
@@ -719,7 +719,7 @@ func (hs *clientHandshakeStateTLS13) sendClientFinished() error {
 }
 
 // [UTLS SECTION BEGINS]
-func (hs *clientHandshakeStateTLS13) decompressCert(m compressedCertificateMessage) (*certificateMsgTLS13, error) {
+func (hs *clientHandshakeStateTLS13) decompressCert(m compressedCertificateMsg) (*certificateMsgTLS13, error) {
 	var (
 		decompressed io.Reader
 		compressed   = bytes.NewReader(m.compressedCertificateMessage)
