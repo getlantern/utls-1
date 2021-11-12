@@ -17,8 +17,6 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-// TODO: update compress cert extensions
-
 func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 	switch id {
 	case HelloChrome_58, HelloChrome_62:
@@ -620,12 +618,9 @@ func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 						VersionTLS10,
 					},
 				},
-				&GenericExtension{
-					// Certificate Compression:
-					// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-10
-					Id: 27,
-					Data: []byte{
-						2, 0, 2,
+				&UtlsCompressCertExtension{
+					Algorithms: []CertCompressionAlgo{
+						CertCompressionBrotli,
 					},
 				},
 				&UtlsGREASEExtension{},
