@@ -4,9 +4,6 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
-// TODO: randomly get 'error decoding message' when connecting to swimswam.com (probably
-// doesn't originate in this function). Also happening with google.com...
-
 // Only implemented client-side, for server certificates.
 // Alternate certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not
 // supported.
