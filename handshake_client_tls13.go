@@ -715,8 +715,6 @@ func (hs *clientHandshakeStateTLS13) sendClientFinished() error {
 
 // [ults disclaimer]
 func (hs *clientHandshakeStateTLS13) decompressCert(m compressedCertificateMessage) (*certificateMsgTLS13, error) {
-	// TODO: examine last paragraph of RFC 8879 Section 4 on altered certificate message formats
-
 	var (
 		decompressed io.Reader
 		compressed   = bytes.NewReader(m.compressedCertificateMessage)

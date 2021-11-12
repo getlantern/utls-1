@@ -8,6 +8,8 @@ import (
 // doesn't originate in this function). Also happening with google.com...
 
 // Only implemented client-side, for server certificates.
+// Alternate certificate message formats (https://datatracker.ietf.org/doc/html/rfc7250) are not
+// supported.
 // https://datatracker.ietf.org/doc/html/rfc8879
 type compressedCertificateMessage struct {
 	raw []byte
