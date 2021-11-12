@@ -804,3 +804,47 @@ func (e *FakeTokenBindingExtension) Read(b []byte) (int, error) {
 	}
 	return e.Len(), io.EOF
 }
+
+type FakeALPSExtension struct {
+	SupportedProtocols []string
+}
+
+func (e *FakeALPSExtension) writeToUConn(uc *UConn) error {
+	return nil
+}
+
+func (e *FakeALPSExtension) Len() int {
+	bLen := 2 + 2 + 2
+	for _, s := range e.SupportedProtocols {
+		bLen += 1 + len(s)
+	}
+	return bLen
+}
+
+func (e *FakeALPSExtension) Read(b []byte) (int, error) {
+	if len(b) < e.Len() {
+		return 0, io.ErrShortBuffer
+	}
+
+	b[0] = byte(fakeExtensionALPS >> 8)
+	b[1] = byte(fakeExtensionALPS & 0xff)
+	lengths := b[2:]
+	b = b[6:]
+
+	stringsLength := 0
+	for _, s := range e.SupportedProtocols {
+		l := len(s)
+		b[0] = byte(l)
+		copy(b[1:], s)
+		b = b[1+l:]
+		stringsLength += 1 + l
+	}
+
+	lengths[2] = byte(stringsLength >> 8)
+	lengths[3] = byte(stringsLength)
+	stringsLength += 2
+	lengths[0] = byte(stringsLength >> 8)
+	lengths[1] = byte(stringsLength)
+
+	return e.Len(), io.EOF
+}
