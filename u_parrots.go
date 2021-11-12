@@ -17,6 +17,8 @@ import (
 	"golang.org/x/crypto/cryptobyte"
 )
 
+// TODO: update compress cert extensions
+
 func utlsIdToSpec(id ClientHelloID) (ClientHelloSpec, error) {
 	switch id {
 	case HelloChrome_58, HelloChrome_62:
