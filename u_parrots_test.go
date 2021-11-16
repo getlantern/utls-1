@@ -6,6 +6,8 @@ package tls
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"reflect"
@@ -236,5 +238,35 @@ func TestUTLSIsGrease(t *testing.T) {
 		if isGREASEUint16(testCase.version) != testCase.isGREASE {
 			t.Errorf("misidentified GREASE: testing %x, isGREASE: %v", testCase.version, isGREASEUint16(testCase.version))
 		}
+	}
+}
+
+var (
+	certCompressionTestHost = flag.String("test-cert-compression-host", "", "required to run TestCertCompression")
+	certCompressionTestPort = flag.Int("test-cert-compression-port", 443, "optional parameter for TestCertCompression")
+)
+
+// TestCertCompression tests this package's implementation of certificate compression (see
+// https://datatracker.ietf.org/doc/html/rfc8879). Because certificate compression is only
+// implemented client-side, it would be complex to write a local test. This test can be used to hit
+// a remote site which implements certificate compression server-side. This test cannot check
+// whether the remote actually served a compressed certificate - building a coverage profile can aid
+// in this.
+func TestCertCompression(t *testing.T) {
+	flag.Parse()
+	if *certCompressionTestHost == "" {
+		t.Skip()
+	}
+
+	// HelloChrome_83 advertises certificate compression.
+	helloID := HelloChrome_83
+
+	tcpConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", *certCompressionTestHost, *certCompressionTestPort))
+	if err != nil {
+		t.Fatalf("failed to dial test host: %v", err)
+	}
+	uconn := UClient(tcpConn, &Config{ServerName: *certCompressionTestHost}, helloID)
+	if err := uconn.Handshake(); err != nil {
+		t.Fatalf("handshake failed: %v", err)
 	}
 }
