@@ -1643,6 +1643,23 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			}
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, recordSizeExt)
 
+		case fakeExtensionDelegatedCredentials:
+			//https://datatracker.ietf.org/doc/html/draft-ietf-tls-subcerts-15#section-4.1.1
+			var supportedAlgs cryptobyte.String
+			if !extData.ReadUint16LengthPrefixed(&supportedAlgs) || supportedAlgs.Empty() {
+				return nil, errors.New("unable to read signature algorithms extension data")
+			}
+			supportedSignatureAlgorithms := []SignatureScheme{}
+			for !supportedAlgs.Empty() {
+				var sigAndAlg uint16
+				if !supportedAlgs.ReadUint16(&sigAndAlg) {
+					return nil, errors.New("unable to read signature algorithms extension data")
+				}
+				supportedSignatureAlgorithms = append(
+					supportedSignatureAlgorithms, SignatureScheme(sigAndAlg))
+			}
+			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &FakeDelegatedCredentialsExtension{supportedSignatureAlgorithms})
+
 		case utlsExtensionCompressCertificate:
 			methods := []CertCompressionAlgo{}
 			methodsRaw := new(cryptobyte.String)
@@ -1674,7 +1691,7 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 			if isGREASEUint16(extension) {
 				clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &UtlsGREASEExtension{unGREASEUint16(extension), extData})
 			} else {
-				return nil, fmt.Errorf("unsupported extension %#x", extension)
+				return nil, fmt.Errorf("unsupported extension %d", extension)
 			}
 
 			continue
