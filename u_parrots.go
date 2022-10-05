@@ -1559,6 +1559,16 @@ func FingerprintClientHello(data []byte) (*ClientHelloSpec, error) {
 					return nil, errors.New("unable to read supported versions extension data")
 				}
 				supportedVersions = append(supportedVersions, unGREASEUint16(vers))
+
+				if isGREASEUint16(vers) {
+					continue
+				}
+				if clientHelloSpec.TLSVersMin == 0 || vers < clientHelloSpec.TLSVersMin {
+					clientHelloSpec.TLSVersMin = vers
+				}
+				if clientHelloSpec.TLSVersMax == 0 || vers > clientHelloSpec.TLSVersMax {
+					clientHelloSpec.TLSVersMax = vers
+				}
 			}
 			clientHelloSpec.Extensions = append(clientHelloSpec.Extensions, &SupportedVersionsExtension{supportedVersions})
 
