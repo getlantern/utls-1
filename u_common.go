@@ -164,36 +164,42 @@ var (
 	HelloRandomizedNoALPN = ClientHelloID{helloRandomizedNoALPN, helloAutoVers, nil}
 
 	// The rest will will parrot given browser.
-	HelloFirefox_Auto = HelloFirefox_65
+	HelloFirefox_Auto = HelloFirefox_105
 	HelloFirefox_55   = ClientHelloID{helloFirefox, "55", nil}
 	HelloFirefox_56   = ClientHelloID{helloFirefox, "56", nil}
 	HelloFirefox_63   = ClientHelloID{helloFirefox, "63", nil}
 	HelloFirefox_65   = ClientHelloID{helloFirefox, "65", nil}
+	HelloFirefox_105  = ClientHelloID{helloFirefox, "105", nil}
 
-	HelloChrome_Auto = HelloChrome_83
+	HelloChrome_Auto = HelloChrome_106
 	HelloChrome_58   = ClientHelloID{helloChrome, "58", nil}
 	HelloChrome_62   = ClientHelloID{helloChrome, "62", nil}
 	HelloChrome_70   = ClientHelloID{helloChrome, "70", nil}
 	HelloChrome_72   = ClientHelloID{helloChrome, "72", nil}
 	HelloChrome_83   = ClientHelloID{helloChrome, "83", nil}
+	HelloChrome_106  = ClientHelloID{helloChrome, "106", nil}
 
 	HelloIOS_Auto = HelloIOS_12_1
 	HelloIOS_11_1 = ClientHelloID{helloIOS, "111", nil} // legacy "111" means 11.1
 	HelloIOS_12_1 = ClientHelloID{helloIOS, "12.1", nil}
 
-	HelloEdge_Auto = HelloEdge_85
+	HelloEdge_Auto = HelloEdge_106
 	HelloEdge_85   = ClientHelloID{helloEdge, "85", nil}
+	HelloEdge_106  = ClientHelloID{helloEdge, "106", nil}
 
 	HelloExplorer_11 = ClientHelloID{helloExplorer, "11", nil}
 
-	HelloSafari_Auto = HelloSafari_13_1
+	HelloSafari_Auto = HelloSafari_16_0
 	HelloSafari_13_1 = ClientHelloID{helloSafari, "13.1", nil}
+	HelloSafari_16_0 = ClientHelloID{helloSafari, "16.0", nil}
 
-	Hello360_Auto = Hello360_7_5
+	Hello360_Auto = Hello360_11_0
 	Hello360_7_5  = ClientHelloID{hello360, "7.5", nil}
+	Hello360_11_0 = ClientHelloID{hello360, "11.0", nil}
 
-	HelloQQ_Auto = HelloQQ_10_6
+	HelloQQ_Auto = HelloQQ_11_1
 	HelloQQ_10_6 = ClientHelloID{helloQQ, "10.6", nil}
+	HelloQQ_11_1 = ClientHelloID{helloQQ, "11.1", nil}
 )
 
 // based on spec's GreaseStyle, GREASE_PLACEHOLDER may be replaced by another GREASE value
