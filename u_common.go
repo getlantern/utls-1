@@ -183,7 +183,7 @@ var (
 	HelloIOS_11_1 = ClientHelloID{helloIOS, "111", nil} // legacy "111" means 11.1
 	HelloIOS_12_1 = ClientHelloID{helloIOS, "12.1", nil}
 
-	HelloEdge_Auto = HelloEdge_106
+	HelloEdge_Auto = HelloEdge_85 // HelloEdge_106 seems to be incompatible with this library
 	HelloEdge_85   = ClientHelloID{helloEdge, "85", nil}
 	HelloEdge_106  = ClientHelloID{helloEdge, "106", nil}
 
@@ -193,7 +193,7 @@ var (
 	HelloSafari_13_1 = ClientHelloID{helloSafari, "13.1", nil}
 	HelloSafari_16_0 = ClientHelloID{helloSafari, "16.0", nil}
 
-	Hello360_Auto = Hello360_11_0
+	Hello360_Auto = Hello360_7_5 // Hello360_11_0 seems to be incompatible with this library
 	Hello360_7_5  = ClientHelloID{hello360, "7.5", nil}
 	Hello360_11_0 = ClientHelloID{hello360, "11.0", nil}
 
